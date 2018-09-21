@@ -1,0 +1,153 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+概率分布，是概率论的基本概念之一，主要用以表述随机变量取值的概率规律。为了使用的方
+便，根据随机变量所属类型的不同，概率分布取不同的表现形式。（1）离散型随机变量概率分
+布
+（2）连续型随机变量概率分布连续型随机变量(如体长、体重、蛋重)的概率分布不能用分布列
+来表示，因为其可能取的值是不可数的。我们改用随机变量x在某个区间内取值的概率P(a≤x [1]
+1.86795623 -0.82628669 -1.52291361 0.36943549 -0.09529713 #> [6] -0.79170938
+0.48755023 1.10974526 0.69891564 0.86937100 ``` #7.1.2设置均值和标准差
+
+```{r}
+rnorm(n=10,mean = 100,sd=20)
+```
+计算一个特定值的概率
+```{r}
+randam<-rnorm(10)
+dnorm(randam)#返回的是一个特定值发生的概率#
+dnorm(c(1,0,1),mean = 100,sd=20)
+```
+通过服从正态分布的随机变量绘制钟形曲线
+```{r}
+randum<-rnorm(30000)
+randensity<-dnorm(randum)
+require(ggplot2)
+#> Loading required package: ggplot2
+ggplot(data.frame(x=randum,y=randensity))+aes(x=x,y=y)+geom_point()+labs(x="Random normal variables",y="density")
+```
+ pnorm 计算正态分布的分布，即给定一个数的累计概率，或是小于这个数的概率
+```{r}
+pnorm(randam)
+pnorm(c(1,0,1))
+pnorm(c(3,0,3))
+pnorm(1)
+pnorm(1)
+p<-ggplot(data.frame(x=randum,y=randensity))+aes(x=x,y=y)+geom_line()+labs(x="x",y="density")
+p
+```
+
+```{r}
+neglseg<-seq(from=min(randum),to=1,by=.1)
+less<-data.frame(x=neglseg,y=dnorm(neglseg))
+head(less)
+```
+
+```{r}
+less1<-rbind(c(min(randum),0),less,c(max(less$x),0))#行合并#
+less1
+p+geom_polygon(data = less1,aes(x=x,y=y))#添加多体\多边形#
+```
+
+```{r}
+neglseg1<-seq(from=1,to=1,by=.1)
+neg1<-data.frame(x=neglseg1,y=dnorm(neglseg1))
+head(neg1)
+```
+
+
+
+```{r}
+neg1<-rbind(c(min(neg1$x),0),neg1,c(max(neg1$x),0))
+p+geom_polygon(data=neg1,aes(x=x,y=y))
+```
+
+```{r}
+prob<-pnorm(randum)#累计概率#
+ggplot(data.frame(x=randum,y=prob))+aes(x=x,y=y)+geom_point()+labs(x="random normal
+variables",y="probability")
+```
+
+ qnorm返回分位数（与pnorm对立）
+```{r}
+randam
+pnorm(randam)
+qnorm(pnorm(randam))
+all.equal(randam,qnorm(pnorm(randam)))
+```
+ 
+ 
+ 
+ 
+ 
+ 二项分布即重复n次独立的伯努利试验。在每次试验中只有两种可能的结果，而且两种结果发生
+与否互相对立，并且相互独立，与其它各次试验结果无关，事件发生与否的概率在每一次独立试
+验中都保持不变，则这一系列试验总称为n重伯努利实验，当试验次数为1时，二项分布服从0-1
+分布。 n：运行次数；size：实验次数，prob:概率，进行10次实验，模拟成功的概率为0.4，产
+生的数是成功的次数#
+```{r}
+rbinom(n=1,size=10,prob = 0.4)
+rbinom(n=5,size=10,prob = 0.4)
+rbinom(n=1,size = 1,prob = 0.4)
+rbinom(n=3,size = 1,prob = 0.4)
+rbinom(n=5,size = 1,prob = 0.4)
+a<-rbinom(n=10000,size = 10,prob = 0.3)
+binomdata<-data.frame(successes=a)
+require(ggplot2)
+ggplot(binomdata,aes(x=successes))+geom_histogram(binwidth = 1)
+```
+
+```{r}
+binom5<-data.frame(successes=rbinom(n=10000,size = 5,prob = 0.3),size=5)
+head(binom5)
+dim(binom5)
+ggplot(binom5,aes(x=successes))+geom_histogram(binwidth = 1)
+```
+
+```{r}
+binom10<-data.frame(successes=rbinom(n=10000,size = 10,prob = 0.3),size=10)
+ggplot(binom10,aes(x=successes))+geom_histogram(binwidth = 1)
+```
+```{r}
+binom100<-data.frame(successes=rbinom(n=10000,size = 100,prob = 0.3),size=100)
+ggplot(binom100,aes(x=successes))+geom_histogram(binwidth = 1)
+```
+```{r}
+binom1000<-data.frame(successes=rbinom(n=10000,size = 1000,prob = 0.3),size=1000)
+ggplot(binom100,aes(x=successes))+geom_histogram(binwidth = 1)
+```
+
+
+```{r}
+rbin<-rbind(binom5,binom10,binom100,binom1000)
+dim(rbin)#(行列数)
+
+ggplot(rbin,aes(x=successes))+geom_histogram()+facet_wrap(~size,scales = "free")#（不同实验大小的随机二项直方图）
+```
+dbinom,pbinom 分别返回的是二项分布
+的密度（精确的概率值）和分布（累计的概率）#
+
+```{r}
+dbinom(x=3,size = 10,prob = 0.3)#成功三次的概率#
+
+pbinom(q=3,size = 10,prob = 0.3)#成功小于等于三次的分布#
+
+dbinom(x=1:10,size = 10,prob = 0.3)
+
+pbinom(q=1:10,size = 10,prob = 0.3)
+
+
+qbinom(p=0.3,size = 10,prob = 0.3)
+```
+泊松分布
+```{r}
+pois1<-rpois(n=10000,lambda = 1)
+pois2<-rpois(n=10000,lambda = 2)
+pois5<-rpois(n=10000,lambda = 5)
+pois10<-rpois(n=10000,lambda = 10)
+pois20<-rpois(n=10000,lambda = 20)
+pois<-data.frame(lambda1=pois1,lambda2=pois2,lambda5=pois5,lambda10=pois10,lambda20=pois20)
+pois
+```
