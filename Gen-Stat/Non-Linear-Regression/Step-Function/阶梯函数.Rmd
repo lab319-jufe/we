@@ -1,0 +1,25 @@
+---
+title: "Untitled"
+author: "jessi潘"
+date: "2018年3月25日"
+output: 
+  pdf_document: 
+    number_sections: yes
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##阶梯函数：
+是将某个预测变量的取值空间切割成K个不同区域，一次生成一个新的定性变量，分段拟合一个常量函数
+C0(X)=I(X<c1)
+C1(X)=I(c1<=X<c2)
+C2(X)=I(c2<=X<c3)
+.....
+CK-1(X)=I(cK-1<=X<cK)
+CK(X)=I(cK<=X)
+I(.)是指示性函数，当条件成立时返回1，否则返回0，由于X只能落在K+1个区间中的某一个，于是对任意X的取值C0(X)+C1(X)+。。+CK(X)=1，以C0(X)、C1(X).....,CK(X)为预测变量用最小二乘法来拟合线性模型：
+因此，当X<c1时，式中每个预测变量都为0，因此beta0成为X<c1时的Y的平均值。
+$$y_i=\beta_0+\beta_1*C_1(x_i)+\beta_2*C_2(x_i)+...+\beta_K*C_K(x_i)+\varepsilon_i$$
