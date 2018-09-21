@@ -1,0 +1,420 @@
+---
+title: "Untitled"
+author: "jessi潘"
+date: "2018年3月25日"
+output: 
+  pdf_document: 
+    number_sections: yes
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#描述统计
+在统计学中常用的描述性工具有许多，其中包括均值、方差、相关矩阵、t检验等，在R中对应的函数就是mean、var、cor、t.test...
+本次会主要浅聊均值、方差、相关矩阵、t检验以及方差检验
+
+插入公式【https://www.cnblogs.com/q735613050/p/7253073.html】
+
+#均值（平均数）：平均数是指在一组数据中所有数据之和再除以这组数据的个数
+#类型:算术平均数、几何平均数、调和平均数、加权平均数、指数平均数。
+#算术平均数是指在一组数据中所有数据之和再除以数据的个数。它是反映数据集中趋势的一项指标。
+把n个数的总和除以n，所得的商叫做这n个数的平均数：
+
+$$Xbar=\sum_{i=1}^{N}\frac{x_{i}}{N}$$
+
+(x1*x2*......*xn)/n
+
+#几何平均数geometric mean
+n个观察值连乘积的n次方根就是几何平均数。根据资料的条件不同，几何平均数分为加权和不加权之分。
+1、对比率、指数等进行平均；
+2、计算平均发展速度；
+
+$$\quad \sqrt[n]{x_1 * x_2 *\underbrace{\cdots}_{\rm cdots} * x_n}$$
+
+x=(x1*x2*......*xn)^(1/n)
+ 
+#harmonic mean
+调和平均数是平均数的一种。但统计调和平均数，与数学调和平均数不同。在数学中调和平均数与算术平均数都是独立的自成体系的。计算结果两者不相同且前者恒小于后者。因而数学调和平均数定义为：数值倒数的平均数的倒数。但统计加权调和平均数则与之不同，它是加权算术平均数的变形，附属于算术平均数，不能单独成立体系。且计算结果与加权算术平均数完全相等。主要是用来解决在无法掌握总体单位数(频数)的情况下，只有每组的变量值和相应的标志总量，而需要求得平均数的情况下使用的一种数据方法。
+
+$$\frac{n}{\frac {1}{x_1} + \frac {1}{x_2} +\underbrace{\cdots}_{\rm cdots} +\frac {1}{x_n}}$$
+
+![](C:/Users/Administrator/Desktop/11.jpg)
+
+从数量关系来考虑，如果用同一资料(变量值不相等)，计算以上三种平均数的结果是:算术平均数大于几何平均数，而几何平均数又大于调和平均数。当所有的变量值都相等时，则这三种平均数就相等。它们的关系可用不等式表示:H≤G≤X
+
+#Weighted average
+加权平均数是不同比重数据的平均数，加权平均数就是把原始数据按照合理的比例来计算
+说明：1)“权”的英文是weight，表示数据的重要程度。即数据的权能反映数据的相对“重要程度”。
+2) 平均数是加权平均数的一种特殊情况，即各项的权相等时，加权平均数就是算术平均数。(f为权)
+$$\frac{x_1 *f_1 +x_2*f_2 +\underbrace{\cdots}_{\rm cdots} ++x_nf_n}{f_1+f_2+\underbrace{\cdots}_{\rm cdots} +f_n}$$ 
+
+(x1f1 + x2f2+ ... xkfk)/n (其中f1 + f2 + ... + fk=n，f1，f2，…，fk叫做权)
+
+指数平均数[EXPMA]，其构造原理是对股票收盘价进行算术平均，并根据计算结果来进行分析，用于判断价格未来走势得变动趋势。
+EXPMA指标是一种趋向类指标，与平滑异同移动平均线[MACD]、平行线差指标[DMA]相比，EXPMA指标由于其计算公式中着重考虑了价格当天 [当期]行情得权重，因此在使用中可克服其他指标信号对于价格走势得滞后性。同时也在一定程度中消除了DMA指标在某些时候对于价格走势所产生得信号提前性，是一个非常有效得分析指标。
+
+#方差
+方差（Variance），应用数学里的专有名词。在概率论和统计学中，一个随机变量的方差描述的是它的离散程度，也就是该变量离其期望值的距离。一个实随机变量的方差也称为它的二阶矩或二阶中心动差，恰巧也是它的二阶累积量。方差的算术平方根称为该随机变量的标准差。
+![](C:/Users/Administrator/Desktop/R的基础操作/12.jpg)
+
+#相关矩阵
+相关矩阵也叫相关系数矩阵，其是由矩阵各列间的相关系数构成的。也就是说，相关矩阵第i行第j列的元素是原矩阵第i列和第j列的相关系数。
+![](C:/Users/Administrator/Desktop/R的基础操作/13.jpg)
+
+
+#T检验
+T检验，亦称student t检验（Student's t test），主要用于样本含量较小（例如n<30），总体标准差σ未知的正态分布资料。t检验是用t分布理论来推论差异发生的概率。分为单总体检验和双总体检验。
+  单总体t检验时检验一个样本平均数与一个已知的总体平均数的差异是否显著。当总体分布是正态分布，如总体标准差未知且样本容量小于30，那么样本平均数与总体平均数的离差统计量呈t分布。
+  双总体t检验是检验两个样本平均数与其各自所代表的总体的差异是否显著。双总体t检验又分为两种情况，一是独立样本t检验，一是配对样本t检验。
+  
+  
+#方差检验
+方差分析(Analysis of Variance，简称ANOVA)，又称"变异数分析"或"F检验"，是R.A.Fisher发明的，用于两个及两个以上样本均数差别的显著性检验。
+  方差分析是从观测变量的方差入手，研究诸多控制变量中哪些变量是对观测变量有显著影响的变量
+  经过方差分析若拒绝了检验假设，只能说明多个样本总体均值不相等或不全相等。若要得到各组均值间更详细的信息，应在方差分析的基础上进行多个样本均值的两两比较。
+  1、对成组设计的多个样本均值比较，应采用完全随机设计的方差分析，即单因素方差分析。
+  2、对随机区组设计的多个样本均值比较，应采用配伍组设计的方差分析，即两因素方差分析。
+  
+
+## 概括性统计量
+计算机并不能产生真正的随机数，如果你不设种子，计算机会用系统时钟来作为种子，如果你要模拟什么的话，每次的随机数都是不一样的，这样就不方便你研究，如果你事先设置了种子，这样每次的随机数都是一样的，便于重现你的研究，也便于其他人检验你的分析结果。
+```{r}
+#简单算术平均 mean()#
+x<-sample(x=1:100,size = 100,replace =T)
+#replace=T表示数据可以被抽取多次，也就是放回抽样#
+mean(x)
+```
+
+```{r}
+set.seed(1)
+x1<-sample(x=1:100,size = 100,replace = T)
+mean(x1)
+```
+```{r}
+#在实际生活中手机的数据都会有缺失值#
+y<-x
+y[sample(x=1:100,size=20,replace=F)]<-NA
+y
+```
+
+```{r}
+mean(y)
+mean(y,na.rm = T)#去除缺失值#
+```
+
+##加权均值
+```{r}
+grades<-c(95,72,87,66)
+weights<-c(1/2,1/4,1/8,1/8)
+mean(grades)
+weighted.mean(x=grades,w=weights)
+```
+```{r}
+x<-c(1,2,3)
+var(x)#方差#
+sum((x-mean(x))^2)/(length(x)-1)
+```
+
+```{r}
+sqrt(var(x))#标准差#
+sd(x)
+sd(y)
+sd(y,na.rm = T)
+```
+
+#其他函数
+```{r}
+min(x)
+max(x)
+median(x)
+min(y)
+min(y,na.rm = T)
+```
+#summary可以同时计算均值、最小值、最大值和中位数以及第一和第三分位数，而且可以自动除去缺失值并对缺失值进行计算
+```{r}
+x
+y
+summary(x)
+summary(y)
+```
+#分位数
+![](C:/Users/Administrator/Desktop/新建文件夹/R的基础操作/14.jpg)
+
+![](C:/Users/Administrator/Desktop/新建文件夹/R的基础操作/15.jpg)
+
+四分位数（Quartile），即统计学中，把所有数值由小到大排列并分成四等份，处于三个分割点位置的得分就是四分位数。
+
+第一四分位数 (Q1)，又称“较小四分位数”，等于该样本中所有数值由小到大排列后第25%的数字。
+
+第二四分位数 (Q2)，又称“中位数”，等于该样本中所有数值由小到大排列后第50%的数字。
+
+第三四分位数 (Q3)，又称“较大四分位数”，等于该样本中所有数值由小到大排列后第75%的数字。
+
+第三四分位数与第一四分位数的差距又称四分位距（InterQuartile Range,IQR）。
+![](C:/Users/Administrator/Desktop/新建文件夹/R的基础操作/16.jpg)
+
+```{r}
+quantile(x,.25)
+quantile(x,probs = c(0.25,0.75))
+quantile(x,probs = c(0.1,0.25,0.5,0.75,0.99))#若某一组数据中某一比例的数均小于某一个数，则其为分位数#
+quantile(y,probs = c(0.25,0.75))#报错，有缺失值#
+quantile(y,probs = c(0.25,0.75),na.rm = T)
+```
+
+#相关系数和协方差，当处理一个以上的变量时，我们需要测度它们之间的相互关系
+  相关表和相关图可反映两个变量之间的相互关系及其相关方向，但无法确切地表明两个变量之间相关的程度。于是，著名统计学家卡尔·皮尔逊设计了统计指标--相关系数(Correlation coefficient)。
+  相关系数是用以反映变量之间相关关系密切程度的统计指标。是按积差方法计算，同样以两变量与各自平均值的离差为基础，通过两个离差相乘来反映两变量之间相关程度;着重研究线性的单相关系数。
+$$r_{xy}=\frac{\sum_{i=1}^n(x_i-xbar)(y_i-ybar)}{(n-1)s_xs_y}$$
+
+![](C:/Users/Administrator/Desktop/新建文件夹/R的基础操作/17.jpg)
+
+```{r}
+require(ggplot2)
+head(economics)
+```
+
+```{r}
+cor(economics$pce,economics$psavert)#分别代表个人消费和个人储蓄率#
+```
+
+```{r}
+xpart<-economics$pce-mean(economics$pce)
+ypart<-economics$psavert-mean(economics$psavert)
+nminusone<-(nrow(economics)-1)
+xsd<-sd(economics$pce)
+ysd<-sd(economics$psavert)
+sum(xpart*ypart)/(nminusone*xsd*ysd)
+```
+#比较多个变量，可以对矩阵（数值型变量）用函数cor#
+```{r}
+economics[,c(2,4:6)]
+cor(economics[,c(2,4:6)])
+```
+
+```{r}
+require(reshape)
+require(GGally)
+require(namespace)
+pm <- ggpairs(economics, c(2,4:6), lower = list(continuous = wrap(ggally_points, size = 1, color = "red")))
+p_(pm)
+
+```
+```{r}
+require(reshape2)
+require(scales)
+econcor<-cor(economics[,c(2,4:6)])#matrix#
+econmelt<-melt(econcor,varnames =c("x","y"),value.name="Correlation")
+
+#melt 是溶解/分解的意思， 即拆分数据。
+#要融合的数据为数组、表以及矩阵，那么melt的表达式为：melt(data, varnames = names(dimnames(data)), ..., na.rm = FALSE, as.is = FALSE, value.name = "value"),varnames用户命名变量名称 ；如果是数据框melt(data, id.vars, measure.vars, variable.name = "variable", ..., na.rm = FALSE, value.name = "value") ,其中 id.vars 是被当做维度的列变量，每个变量在结果中占一列；measure.vars 是被当成观测值的列变量，它们的列变量名称和值分别组成 variable 和 value两列，列变量名称用variable.name 和 value.name来指定#
+
+econmelt1<-econmelt[order(econmelt$Correlation),]
+econmelt1
+```
+#热图#
+```{r}
+ggplot(econmelt1,aes(x=x,y=y))+geom_tile(aes(fill=econm$Correlation))+scale_fill_gradient2(low=muted("red"),mid = "white",high = "steelblue",guide = guide_colorbar(ticks = F,barheight = 10),limits=c(-1,1))+theme_minimal()+labs(x=NULL,Y=NULL)
+```
+
+与mean一样，cor也会遇到缺失值，但是处理方式不一样，因为cor处理时必须同时考虑多列数据，所以不用设置na.rm来去除缺失值，而是运用"all.obs","complete.obs","pairwise.complete.obs","everything"或者"na.or.complete"其中的一种
+```{r}
+m<-c(9,9,NA,3,NA,5,8,1,10,4)
+n<-c(2,NA,1,6,6,4,1,1,6,7)
+p<-c(8,4,3,9,10,NA,3,NA,9,3)
+q<-c(10,10,7,8,4,2,8,5,5,2)
+r<-c(1,9,7,6,5,6,2,7,9,10)
+themat<-cbind(m,n,p,q,r)
+themat
+```
+everything:意味着所有列的元素必须不含缺失值，否则结果就是NA，应用这个方法会得到一个除对角线和q与r列外其他元素均为NA的矩阵，显然每一列元素总是和自身完全相关，"all.obs"和他一样，同样要求不能有缺失值，不然就会提示错误。
+```{r}
+cor(themat,use = "everything")
+cor(themat,use = "all.obs")
+cor(themat[c(1,4,7),],use = "all.obs")
+```
+
+complete.obs和na.or.complete处理方式相似，仅留下不存在缺失值的行。在本例中留下的是1,4,7,9和10行并根据这几行数据计算相关系数，两者不同在于，如果经过处理后没有一个具有完整数据的行，complete.obs就会返回错误提示，而na.or.complete则会返回NA
+```{r}
+cor(themat,use = "complete.obs")
+cor(themat,use = "na.or.complete")
+cor(themat[c(2,3,8),],use = "complete.obs")
+```
+
+pairwise.complete.obs:用途更为广泛，一次比较多变量，并把两个变量互相之间的缺失值剔除，用余下的数据计算两者的相关关系，这种方式本质上和complete.obs在计算每一对变量组合的相关系数是相同的。
+```{r}
+cor(themat,use = "pairwise.complete.obs")
+```
+```{r}
+cor(themat[,c("m","n")],use = "complete.obs")
+cor(themat[,c("m","n")],use = "pairwise.complete.obs")
+```
+
+```{r}
+data(tips,package="reshape2")
+head(tips)#小费数据
+```
+
+```{r}
+require(progress)
+require(prettyunits)
+GGally::ggpairs(tips)##根据数据集中连续变量和分类变量的不同，都绘制了相关的变量的直方图，箱线图或者散点图，但不一定是探索性分析最有效率的形式
+```
+
+相关性并不意味着存在因果关系，换言之，两个变量有相关关系也不一定说明它们互相影响。
+
+
+协方差：与相关系数类似，计算公式像方差
+在概率论和统计学中，协方差用于衡量两个变量的总体误差。而方差是协方差的一种特殊情况，即当两个变量是相同的情况。
+两个不同参数之间的方差就是协方差 若两个随机变量X和Y相互独立，则E[(X-E(X))(Y-E(Y))]=0，因而若上述数学期望不为零，则X和Y必不是相互独立的，亦即它们之间存在着一定的关系。
+![公式](C:/Users/Administrator/Desktop/新建文件夹/R的基础操作/22.jpg)
+
+
+
+```{r}
+cov(economics$pce,economics$psavert)
+cov(economics[,c(2,4:6)])
+```
+
+```{r}
+identical(cov(economics$pce,economics$psavert),cor(economics$pce,economics$psavert)*sd(economics$pce)*sd(economics$psavert))
+```
+
+t—检验
+T检验，亦称student t检验（Student's t test），主要用于样本含量较小（例如n<30），总体标准差σ未知的正态分布资料。
+```{r}
+head(tips)
+```
+
+```{r}
+unique(tips$sex)#服务者的性别 #unique返回对象的不同取值，如unique(c(1,1,2,3)) 返回1 2 3；duplicated 判断对象的每个取值是否重复，如duplicated(c(1,1,2,3)) 返回 FALSE  TRUE FALSE FALSE ，其中T对应的为重复的值
+unique(tips$day)#周几
+nrow(tips)
+```
+
+单样本t-检验
+  单总体t检验时检验一个样本平均数与一个已知的总体平均数的差异是否显著。当总体分布是正态分布，如总体标准差未知且样本容量小于30，那么样本平均数与总体平均数的离差统计量呈t分布。
+  t-检验实际上求出了该样本数据的平均值并且构造了一个置信区间，如果平均值落在了这个区间里，则可断定该值是总体数据的真实均值，否则则不认为。
+#置信区间是指由样本统计量所构造的总体参数的估计区间。在统计学中，一个概率样本的置信区间(Confidence interval)是对这个样本的某个总体参数的区间估计。置信区间展现的是这个参数的真实值有一定概率落在测量结果的周围的程度。置信区间给出的是被测量参数的测量值的可信程度，即前面所要求的"一个概率".公式：Pr(c1<=μ<=c2)=1-α  α：显著性水平（显著性水平是估计总体参数落在某一区间内，可能犯错误的概率为显著性水平，用α表示）
+![](C:/Users/Administrator/Desktop/R的基础操作/19.jpg)
+  
+  下面结果显示了t-检验的步骤和均值是否等于$2.5的假设加盐，还显示了t统计量及其自由度和p值，此外还提供了均值变量的95%的置信区间，p值小于.05，所以拒绝元假设，得到均值不等于$2.5的结论
+
+```{r}
+t.test(tips$tip,alternative = "two.sided",mu=2.5)#进行单样本t-检验来判断tips的平均值是否为$2.5#
+```
+
+t统计量是被估计均值和假设均值之差与所估计均值的标准差的比率
+
+$$\frac{(xbar-mu_0)}{s_xbar/\sqrt{2} \quad}$$
+![](C:/Users/Administrator/Desktop/R的基础操作/20.jpg)
+
+dt() 的返回值是正态分布概率密度函数(density)
+pt()返回值是正态分布的分布函数(probability)
+函数qt()的返回值是给定概率p后的下百分位数(quantitle)
+rt()的返回值是n个正态分布随机数构成的向量
+```{r}
+randT<-rt(30000,df=NROW(tips)-1)
+head(randT)
+tipTTest<-t.test(tips$tip,alternative = "two.sided",mu=2.50)
+tipTTest
+```
+
+
+P值是一个经常被误解的概念，尽管所有的误解都认为P值是概率值，且若原假设是正确，则p值会越小。其实p值是对统计量极短程度的测度，本例中，就是估计均值的极端程度。如果统计量表现太极端那么我们就拒绝元假设，同样，自由度也是一个很难理解的概念，它代表着观测值的有效数量，一般来说，自由度是某些统计量或者分布的观测值的数目减去他要估计的参数数量，在本例中，自由度就是自由度为nrow(tips)-1（自由度的数量等于“观测”的数量减去所需的观测之间的关系（例如，参数估计数）。对于单样本t检验一个自由度估计均值，剩下的n- 1自由度估计可变性。）
+
+链接:https://www.applysquare.com/topic-cn/78TAnIzZ6/）
+```{r}
+ggplot(data.frame(x=randT))+geom_density(aes(x=x),fill="grey",color="grey")+geom_vline(xintercept = tipTTest$statistic)+geom_vline(xintercept = mean(randT)+c(-2,2)*sd(randT),linetype=2)#虚线为t分布均值的两倍标准差线#
+#如果假设的均值正确，那么我们预计t统计量的值落在两虚线之间，图中实线代表所估计的均值且其落在t分布外面#
+```
+
+用单侧t-检验来看均值是否大于$2.5
+```{r}
+t.test(tips$tip,alternative = "greater",mu=2.5)
+```
+
+两样本t-检验
+双总体t检验是检验两个样本平均数与其各自所代表的总体的差异是否显著。双总体t检验又分为两种情况，一是独立样本t检验，一是配对样本t检验。
+共同点：都是对两水平数据均值的比较。
+不同点：独立样本t检验用于组间设计的比较（即不同的被试接受不同的实验处理），而配对样本t检验用于组内设计的比较（即每个被试都接受所有实验处理）
+
+```{r}
+##举例：比较tips数据中tip在男女之间是否有差异，在检验之前先检验两个样本的方差是否相等，一般的t-检验要求两个样本要具有相等的房擦汗，而welch两样本t-检验可以检验不同方差的样本。
+aggregate(tip~sex,data = tips,var)
+```
+```{r}
+require(ggplot2)
+shapiro.test(tips$tip)#正太检验
+shapiro.test(tips$tip[tips$sex=="Female"])
+shapiro.test(tips$tip[tips$sex=="Male"])
+ggplot(tips,aes(x=tip,fill=sex))+geom_histogram(binwidth = 0.5,alpha=1/2)##根据性别分类的变量tip的直方图，注意到两个样本都不是正态分布
+```
+
+由于验证表明数据不服从正态分布，则无论是标准的F(var.test)检验还是Bartlett_检验（通过函数bartlett.test)都失败了，于是，需要使用非参数Ansari-Bradley检验区检验两者方差是否相等。
+```{r}
+ansari.test(tip~sex,tips)##结果可知方差相等，可用标准的两样本t-检验
+```
+
+```{r}
+t.test(tip~sex,data = tips,var.equal=T)##可得P值不显著，表明男女员工被给的小费大体上是相等的
+```
+
+还可以根据经验法则判别是否相等
+```{r}
+#首先利用分类变量sex用ddply函数进行分类，然后吧函数summarize运用到自己数据中，调用其他函数返回data.frame形式
+require(plyr)
+tipsummary<-ddply(tips,"sex",summarize,tip.mean=mean(tip),tip.sd=sd(tip),Lower=tip.mean-2*tip.sd/sqrt(NROW(tip)),Upper=tip.mean+2*tip.sd/sqrt(NROW(tip)))
+tipsummary
+ggplot(tipsummary,aes(x=tip.mean,y=sex))+geom_point()+geom_errorbarh(aes(xmin=Lower,xmax=Upper),height=.2)##两个样本的置信区间有重叠部分，这表明两个样本的均值大体相等。
+```
+
+配对样本t-检验
+对于检验配对数据（例如，对双胞胎的测度、治疗前后差异等）的差异性，需使用配对样本t-检验。
+```{r}
+require(UsingR)
+head(father.son)
+```
+
+```{r}
+fheight<-c(65.04851,63.25094,64.95532,65.75250,61.13723,63.02254,64.85132,63.35250,64.22723,65.21102,61.22703,62.22723)
+sheight<-c(59.77827,63.21404,63.34242,62.79238,64.28113,64.24221,63.11242,61.49238,60.11113,64.22775,62.01343,60.22723)
+height<-data.frame(fheight,sheight)
+```
+
+```{r}
+t.test(height$fheight,height$sheight,paired = T)##看P值
+```
+
+还可以利用数据绘制出父亲与儿子身高差的核密度曲线
+```{r}
+heightDiff<-height$fheight-height$sheight
+ggplot(height,aes(x=height$fheight-height$sheight))+geom_density()+geom_vline(xintercept = mean(heightDiff))+geom_vline(xintercept = mean(heightDiff)+2*c(-1,1)*sd(heightDiff)/sqrt(nrow(height)),linetype=2)
+```
+
+方差分析（ANOVA）
+
+
+```{r}
+tipAnova<-aov(tip~day-1,tips)
+tipAnova
+```
+
+```{r}
+tipIntercept<-aov(tip~day,tips)
+tipAnova$coefficients
+tipIntercept$coefficients##有截距项
+```
+
+```{r}
+summary(tipAnova)##p值显著，则进一步探索哪一组与其他组不同
+```
+
+绘制出不同组的聚集均值的置信区间图
+```{r}
+tipsByDay<-ddply(tips,"day",summarize,tip.mean=mean(tip),tip.sd=sd(tip),Length=NROW(tip),tfrac=qt(p=.90,df=Length-1),Lower=tip.mean-tfrac*tip.sd/sqrt(Length),Upper=tip.mean+tfrac*tip.sd/sqrt(Length))
+ggplot(tipsByDay,aes(x=tip.mean,y=day))+geom_point()+geom_errorbarh(aes(xmin=Lower,xmax=Upper),height=.3)#nrow只对数据框和矩阵使用##途中表明变量tip在周日是不同于周四和周五，仅在90%置信区间水平不同#
+```
+
