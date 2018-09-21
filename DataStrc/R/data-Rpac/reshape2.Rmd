@@ -1,0 +1,73 @@
+---
+title: "Untitled"
+author: "jessi潘"
+date: "2018年3月29日"
+output: pdf_document
+---
+#reshape2包是由Hadley Wickham开发的用于数据重构的包，其主要功能函数为melt、cast，实现了长数据和宽数据之间的转换，包中还包含其它函数和数据集
+```{r}
+library(reshape2)
+```
+#长数据和宽数据
+##宽数据：宽数据是我们常见的数据集格式，因为这种格式符合数据收集的习惯和标准，数据集的每一列为一个观测变量，每一行为一组所有观测变量的观测值
+```{r}
+head(airquality)
+```
+
+#长数据：长数据有两个特殊的列：variable和value
+ variable列用于存放观测变量，value列用于存放观测变量对应的观测值
+```{r}
+data1<-melt(airquality)
+head(data1)
+```
+#melt
+Convert an object into a molten data frame.(返回数据框)
+对不同的数据对象，melt函数有不同的使用方法：
+针对数组的melt.array
+针对数据框的melt.data.frame
+针对向量的melt.default
+针对列表的melt.list**
+
+##melt(data, id.vars, measure.vars, variable.name = "variable", ..., na.rm = FALSE, value.name = "value",factorsAsStrings = TRUE)
+
+id.vars：用于指定标识变量，根据标识标量对其它变量进行“融化”，标识变量本身不进行“融化”
+measure.vars：用于指定测量变量，对测量变量进行“融化”，其它变量不进行“融化”
+若只指定了id.vars和measure.vars中的一项，则把指定之外的变量作为另一项
+若两者都未指定，则把因子和字符串类型的变量作为id.vars，其余变量作为measure.vars
+```{r}
+data1<-melt(airquality)
+head(data1)
+# 指定Month和Day为标识变量
+data2<-melt(airquality,id.vars = c("Month","Day"))
+head(data2)
+```
+```{r}
+# 指定Species为测量变量
+data3<-melt(iris,measure.vars = "Species")
+head(data3)
+```
+
+
+##melt.array（其实可以处理的对象包括array、table和matrix）
+melt(data, varnames = names(dimnames(data)), …, na.rm = FALSE, as.is = FALSE, value.name = “value”)
+varnames：用于指定“融化”后形成的数据框的变量名
+na.rm：默认为FALSE，用于移除缺失值
+as.is：默认为FALSE，为FALSE时，函数会调用type.convert方法将维度名称转化，为TRUE时，维度名称仍会作为字符串类型
+```{r}
+a<-array(c(1:23,NA),c(2,3,4))
+melt(a,varnames=c("x","y","z"))
+
+```
+#将向量转化为数据框
+melt(data, …, na.rm = FALSE, value.name = “value”)
+```{r}
+melt(c("data","science","a"))
+```
+可递归地拆分列表中的元素
+melt(data, …, level = 1)
+level：默认为1，用于设置标签
+```{r}
+b<-as.list(c("a","b",NA))
+melt(b)
+```
+
