@@ -1,0 +1,77 @@
+---
+title: "Untitled"
+author: "jessi潘"
+date: "2018年3月25日"
+output: 
+  pdf_document: 
+    number_sections: yes
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#广义相加模型
+
+拟合广义相加模型的包mgcv和glm有相同的语法
+```{r}
+creditnames<-c("checking","duration","credithistory","purpose","creditamount","savings","employment","insatllmenrate","gendermarital","otherdebtors","yearsatresidence","realestate","age","otherinstallment","housing","existingcredits","Job","numliable","phone","foreign","credit")
+theURL<-"http://archive.ics.uci.edu/ml/machine-learning-databases/statlog/german/german.data"
+credit<-read.table(theURL,sep="",header=F,col.names=creditnames,stringsAsFactors=F)
+```
+
+```{r}
+head(credit)
+```
+将代码转换成有意义的数据
+```{r}
+head(credit[,c("credithistory","purpose","employment","credit")])
+```
+
+```{r}
+credithistory<-c(A30="All Paid",A31="All Paid This Bank",A32="Up To Date",A33="Late Payment",A34="Critical Account")
+purpose<-c(A40="car (new)",A41="car(used)",A42="furniture/equipment",A43="radio/television",A44="domestic application",A45="repairs",A46="education",A47="(vacation-does not exist?)",A48="retraining",A49="business",A50="others")
+employment<-c(A71="umemployment",A72="<1 year",A73="1-4 years",A74="4-7 years",A75=">=7 years")
+```
+
+```{r}
+credit$credithistory<-credithistory[credit$credithistory]
+credit$purpose<-purpose[credit$purpose]
+credit$employment<-employment[credit$employment]
+```
+
+```{r}
+credit$credit<-ifelse(credit$credit==1,"Good","Bad")
+credit$credit<-factor(credit$credit,levels = c("Good","Bad"))
+```
+
+```{r}
+head(credit[,c("credithistory","purpose","employment","credit")])
+```
+
+```{r}
+require(useful)
+ggplot(credit,aes(x=creditamount,y=credit))+geom_jitter(position = position_jitter(height = .2))+facet_grid(credithistory~employment)+xlab("credit amount")+theme(axis.text.x = element_text(angle = 90,hjust = 1,vjust = .5))+scale_x_continuous(labels = multiple)
+```
+基于信用额度、信用历史、雇佣情况、好信用与坏信用
+
+```{r}
+ggplot(credit,aes(x=creditamount,y=age))+geom_point(aes(color=credit))+facet_grid(credithistory~employment)+xlab("credit amount")+theme(axis.text.x = element_text(angle = 90,hjust = 1,vjust = .5))+scale_x_continuous(labels = multiple)
+```
+年龄与信用额度
+上两图克制线性关系并不明显，所以用GAM可能更合适
+gam类似使用其他模型例如lm,glm，都是采用表达式参数形式。不同的是像creditamont和age这种连续变量可以被像样条或张量积这样的非参数光滑函数转化
+#A GAM formula, or a list of formulae (see formula.gam and also gam.models). 
+s(..., k=-1,fx=FALSE,bs="tp",m=NA,by=NA,xt=NULL,id=NULL,sp=NULL,pc=NULL)
+```{r}
+require(mgcv)
+creditgam<-gam(credit~creditamount+age+credithistory+employment,data=credit,family = binomial(link = "logit"))
+summary(creditgam)
+```
+
+```{r}
+plot(creditgam,select = 1,se=T,shade=T)
+plot(creditgam,select = 2,se=T,shade=T)
+```
+分别展示了creditamount和age以及样条或张量积的光滑作用，灰色部分代表光滑曲线的置信区间
