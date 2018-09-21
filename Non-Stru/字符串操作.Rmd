@@ -1,0 +1,393 @@
+---
+title: "R 的字符串操作"
+output: html_notebook
+---
+对象合并
+paste:paste(…, sep = " “, collapse = NULL),sprintf#
+```{r}
+paste("hello","jessi","and others")
+
+sprintf("hello %s %s","jessi","and others")
+
+paste("hello",c("lucy","jane"),c("chen","li"),",")
+
+paste("hi",c("lucy","jane","david"),collapse = ",")#利用collapse参数，paste能将一个文本向
+#量拆解成有任意分隔符的元素组成的向量#
+paste(c("hello","everyone","out there"),collapse = ",")
+person<-"Jared"
+partysize<-"eight"
+waittime<-25
+paste("hello",person,",your party of",partysize,"will be seated in",waittime,"minutes.",sep = "")#sep: 把多个字符串拼接为一个大的字符串，用于字符串的分割符。#
+
+sprintf("hello %s, yout party of %s will be seated in %s
+minutes",person,partysize,waittime)
+
+sprintf("hello %s, yout party of %s will be seated in %s minutes",c("Jared","Lucy"),c
+("eight","four",10,16),waittime)#向量长度必须是彼此的倍数#
+
+```
+调用stringr包
+```{r}
+require(stringr)
+```
+与str_join完全相同，类似于paste:字符串拼接操作:str_c(…, sep = “”, collapse = NULL)#
+```{r}
+str_c("a","b",sep = "")
+
+str_c(c("a","a1"),c("b","b1"),sep = "")
+
+str_c(head(letters),collapse = " ")
+
+str_c(c("a","a1"),c("b","b1"),collapse = "")
+
+```
+
+
+
+str_trim函数
+去掉字符串的空格和TAB():str_trim(string, side = c(“both”, “left”, “right”)),side: 过滤方式，both两
+边都过滤，left左边过滤，right右边过滤#
+```{r}
+str_trim(" left space ",side = "left")#去掉空格
+
+str_trim(" left space ",side="right")
+
+str_trim(" left space ",side="both")
+```
+
+
+str_pad函数
+补充字符串的长度str_pad(string, width, side = c(“left”, “right”, “both”), pad = " “)，width: 字符串
+填充后的长度，side: 填充方向，both两边都填充，left左边填充，right右边填充，pad: 用于填充
+的字符#
+```{r}
+str_pad("connan",20,"left")
+#> [1] " connan"
+str_pad("connan",20,"right")
+#> [1] "connan "
+str_pad("connan",20,"both","x")
+#> [1] "xxxxxxxconnanxxxxxxx"
+```
+str_dup函数
+
+赋值str_dup(string, times)#
+```{r}
+val <-c("abca4", 123, "cba2")
+str_dup(val,2)
+#> [1] "abca4abca4" "123123" "cba2cba2"
+str_dup(val,1:3)#按位置复制#
+#> [1] "abca4" "123123" "cba2cba2cba2"
+```
+str_wrap函数
+
+控制字符串输出格式str_wrap(string, width = 80, indent = 0, exdent = 0)，width: 设置一行所占的
+宽度，indent: 段落首行的缩进值，exdent: 段落非首行的缩进值# #cat(… , file = “”, sep = " “, fill
+= FALSE, labels = NULL, append = FALSE)#
+```{r}
+txt<-"R语言作为统计学一门语言，一直在小众领域闪耀着光芒。直到大数据的爆发，R语言变成了一门炙手
+可热的数据分析的利器。随着越来越多的工程背景的人的加入，R语言的社区在迅速扩大成长。现在已不仅仅
+是统计领域，教育，银行，电商，互联网….都在使用R语言。"
+str_wrap(txt,width = 40)
+cat(str_wrap(txt,width = 40),"\n")
+cat(str_wrap(txt,width = 60,indent = 2),"\n")
+cat(str_wrap(txt,width = 20,exdent =4),"\n")
+```
+str_sub函数
+截取字符串str_sub(string, start = 1L, end = -1L)#
+
+```{r}
+txt<-"R语言作为统计学一门语言，一直在小众领域闪耀着光芒。"
+str_sub(txt,3,6)
+#> [1] "言作为统"
+str_sub(txt,c(1,4),c(6,8))
+#> [1] "R语言作为统" "作为统计学"
+str_sub(txt,3)#通过负坐标截取字符串#
+
+str_sub(txt,end = 3)
+
+x <-"AAABBBCCC"
+str_sub(x,1,1)<-1
+x
+#> [1] "1AABBBCCC"
+str_sub(x, start=2, end=2)<-"2345"
+x
+#> [1] "12345C"
+```
+
+
+str_count:字符串计数
+str_count(string, pattern = “”)
+pattern: 匹配的字符
+```{r}
+str_count(txt, "一")
+#> [1] 2
+fruit <- c("apple", "banana", "pear", "pineapple")
+str_count(fruit, "a")#对字符串向量中匹配的字符计数#
+#> [1] 1 3 1 1
+str_count(c("a.", ".", ".a.",NA), ".") #对字符串中的'.'字符计数，由于.是正则表达式的匹配符，直接判断计数的结果是不对的#
+#> [1] 2 1 3 NA
+str_count(c("a.", ".", ".a.",NA), fixed("."))
+#> [1] 1 1 2 NA
+str_count(c("a.", ".", ".a.",NA), "\\.")
+```
+
+
+str_length函数
+字符串长度str_length(string)
+```{r}
+str_length(c("I", "am", "张丹", NA))
+```
+
+str_sort函数
+字符串值排序，同str_order索引排序，str_sort(x, decreasing = FALSE, na_last = TRUE, locale
+= “”, …)；str_order(x, decreasing = FALSE, na_last = TRUE, locale = “”, …)。decreasing: 排序
+方向，na_last:NA值的存放位置，一共3个值，TRUE放到最后，FALSE放到最前，NA过滤处
+理，locale:按哪种语言习惯排序#
+```{r}
+str_sort(c("a",1,2,"11"),locale = "en")#按照ASCII字母排序#
+
+str_sort(c("你","好","朋","友"),locale="zh")
+#> [1] "好" "你" "朋" "友"
+#按拼音排序#
+str_sort(letters,decreasing = T)#倒序排序#
+#> [1] "z" "y" "x" "w" "v" "u" "t" "s" "r" "q" "p" "o" "n" "m" "l" "k" "j"
+#> [18] "i" "h" "g" "f" "e" "d" "c" "b" "a"
+```
+
+
+
+
+
+
+对NA值得排序处理
+```{r}
+str_sort(c(NA,"1",NA),na_last = T)
+#> [1] "1" NA NA
+str_sort(c(NA,"1",NA),na_last = NA)
+#> [1] "1"
+```
+ 
+ 
+ 字符串匹配函数
+str_split
+字符串分割，同str_split_fixed str_split(string, pattern, n = Inf)；str_split_fixed(string, pattern, n)
+pattern: 匹配的字符。n: 分割个数
+
+```{r}
+val<-"R语言作为统计学一门语言，一直在小众领域闪耀着光芒。直到大数据的爆发，R语言变成了一门炙手
+可热的数据分析的利器。随着越来越多的工程背景的人的加入，R语言的社区在迅速扩大成长。现在已不仅仅
+是统计领域，教育，银行，电商，互联网….都在使用R语言。"
+s1<-str_split(val,"，")
+s1
+
+s2<-str_split(val,"，",2)#分成两块#
+s2
+
+class(s1)
+#> [1] "list"
+s3<-str_split(val,"R")
+s3
+#> [[1]]
+#> [1]
+""
+#> [2] "语言作为统计学一门语言，一直在小众领域闪耀着光芒。直到大数据的爆发，"
+#> [3] "语言变成了一门炙手可热的数据分析的利器。随着越来越多的工程背景的人的加入，"
+#> [4] "语言的社区在迅速扩大成长。现在已不仅仅是统计领域，教育，银行，电商，互联网….都在使用"
+```
+
+
+str_subset函数
+返回的匹配字符串：str_subset(string, pattern) pattern: 匹配的字符。
+```{r}
+a<-unlist(s1)
+str_subset(a,"R")#全文匹配#
+#> [1] "R语言作为统计学一门语言"
+#> [2] "R语言变成了一门炙手可热的数据分析的利器。随着越来越多的工程背景的人的加入"
+#> [3] "R语言的社区在迅速扩大成长。现在已不仅仅是统计领域"
+#> [4] "互联网….都在使用R语言。"
+str_subset(a,"^R")#开头匹配#
+#> [1] "R语言作为统计学一门语言"
+#> [2] "R语言变成了一门炙手可热的数据分析的利器。随着越来越多的工程背景的人的加入"
+#> [3] "R语言的社区在迅速扩大成长。现在已不仅仅是统计领域"
+str_subset(a,"R$")#结尾匹配#
+```
+
+
+
+从文本中提取单词
+word(string, start = 1L, end = start, sep = fixed(" “)) start: 开始位置。end: 结束位置。sep: 匹配
+字符
+```{r}
+word(a,1)#默认以空格分割，取第一个位置的字符串#
+#> [1] "R语言作为统计学一门语言"
+#> [2] "一直在小众领域闪耀着光芒。直到大数据的爆发"
+#> [3] "R语言变成了一门炙手可热的数据分析的利器。随着越来越多的工程背景的人的加入"
+#> [4] "R语言的社区在迅速扩大成长。现在已不仅仅是统计领域"
+#> [5] "教育"
+#> [6] "银行"
+#> [7] "电商"
+#> [8] "互联网….都在使用R语言。"
+val1 <-c("I am Jane.", "http://fens.me, ok")
+word(val1,1)
+#> [1] "I" "http://fens.me,"
+word(val1,1)
+#> [1] "Jane." "ok"
+word(val1,2,1)
+#> [1] "am Jane." "ok"
+word(a,1,sep = fixed("。"))
+#> [1] "R语言作为统计学一门语言"
+#> [2] "一直在小众领域闪耀着光芒"
+#> [3] "R语言变成了一门炙手可热的数据分析的利器"
+#> [4] "R语言的社区在迅速扩大成长"
+#> [5] "教育"
+#> [6] "银行"
+#> [7] "电商"
+#> [8] "互联网….都在使用R语言"
+word(a,1,
+sep = fixed("。"))
+#> [1] "R语言作为统计学一门语言" "直到大数据的爆发"
+#> [3] "随着越来越多的工程背景的人的加入" "现在已不仅仅是统计领域"
+#> [5] "教育" "银行"
+#> [7] "电商" ""
+```
+
+str_detect函数
+匹配字符串的字符：str_detect(string, pattern)# pattern: 匹配字符。
+```{r}
+str_detect(a,"^R")
+#> [1] TRUE FALSE TRUE TRUE FALSE FALSE FALSE FALSE
+str_detect(a,"R")
+#> [1] TRUE FALSE TRUE TRUE FALSE FALSE FALSE TRUE
+```
+
+str_match函数
+从字符串中提取匹配组:str_match(string, pattern);str_match_all(string, pattern)# pattern: 匹配字
+符。
+```{r}
+str_match(a,"R")
+#> [,1]
+#> [1,] "R"
+#> [2,] NA
+#> [3,] "R"
+#> [4,] "R"
+#> [5,] NA
+#> [6,] NA
+#> [7,] NA
+#> [8,] "R"
+str_match(a,"R语言")
+#> [,1]
+#> [1,] "R语言"
+#> [2,] NA
+#> [3,] "R语言"
+#> [4,] "R语言"
+#> [5,] NA
+#> [6,] NA
+#> [7,] NA
+#> [8,] "R语言"
+b <-c("abc", 123, "cba")
+str_match(b,"[09]")#
+#匹配字符09，
+#限1个，并返回对应的字符#
+#> [,1]
+#> [1,] NA
+#> [2,] "1"
+#> [3,] NA
+str_match(b,"[09]*")
+#匹配字符09，
+#不限数量，并返回对应的字符#
+#> [,1]
+#> [1,] ""
+#> [2,] "123"
+#> [3,] ""
+str_match_all(b,"a")#从字符串中提取匹配组，以字符串matrix格式返回#
+#> [[1]]
+#> [,1]
+#> [1,] "a"
+#>
+#> [[2]]
+#> [,1]
+#>
+#> [[3]]
+#> [,1]
+#> [1,] "a"
+```
+
+str_replace函数
+字符串替换str_replace(string, pattern, replacement) pattern: 匹配字符。replacement: 用于替换
+的字符。
+
+```{r}
+str_replace(b,"[ab]","")#
+#把目标字符串第一个出现的a或b，替换#
+str_replace_all(b, "[ab]", "")
+#把目标字符串所有出现的a或b，替换
+str_replace_all(b, "[a]", "0")
+#> [1] "0bc" "123" "cb0"
+str_replace(b, "[a]", "0")
+#> [1] "0bc" "123" "cb0"
+str_replace_na(c(NA,"a","abc"),"x")#把NA替换#
+```
+
+str_locate函数
+找到的模式在字符串中的位置：str_locate(string, pattern)；str_locate_all(string, pattern)#
+```{r}
+str_locate(a,"R语言")
+str_locate(a,c("R语言","统计",1))#长度一样#
+str_locate(b,c("a", 12, "b"))
+str_locate_all(b,c("a", 12, "b"))
+str_locate_all(b, "[ab]")#匹配a或b字符，以字符串matrix格式返回#
+```
+
+str_extract函数
+从字符串中提取匹配模式 str_extract(string, pattern);str_extract_all(string, pattern, simplify =
+FALSE) simplify: 返回值，TRUE返回matrix，FALSE返回列表
+```{r}
+a
+#> [1] "R语言作为统计学一门语言"
+#> [2] "一直在小众领域闪耀着光芒。直到大数据的爆发"
+#> [3] "R语言变成了一门炙手可热的数据分析的利器。随着越来越多的工程背景的人的加入"
+#> [4] "R语言的社区在迅速扩大成长。现在已不仅仅是统计领域"
+#> [5] "教育"
+#> [6] "银行"
+#> [7] "电商"
+#> [8] "互联网….都在使用R语言。"
+str_extract(a,"R")
+#> [1] "R" NA "R" "R" NA NA NA "R"
+str_extract(a,"\\d")# 返回匹配的数字#
+#> [1] NA NA NA NA NA NA NA NA
+d <-c("abca4", 123, "cba2")
+str_extract(d,"\\d")
+#> [1] "4" "1" "2"
+str_extract_all(d,"\\d")
+#> [[1]]
+#> [1] "4"
+#>
+#> [[2]]
+#> [1] "1" "2" "3"
+#>
+#> [[3]]
+#> [1] "2"
+```
+
+str_conv函数
+字符编码转换:str_conv(string, encoding) encoding: 编码名。
+```{r}
+x<-charToRaw("你好")#把中文字符字节化#
+x
+```
+
+
+
+str_to_upper函数
+字符串大写转换. str_to_upper(string, locale = “”);str_to_lower(string, locale = “”);str_to_title
+(string, locale = “”) locale:按哪种语言习惯排序#
+```{r}
+i <-"I am Jane. Welcome to my blog! http://fens.me"
+str_to_upper(i)
+#> [1] "I AM JANE. WELCOME TO MY BLOG! HTTP://FENS.ME"
+str_to_lower(i)
+#> [1] "i am jane. welcome to my blog! http://fens.me"
+str_to_title(i)# 首字母大写#
+#> [1] "I Am Jane. Welcome To My Blog! Http://Fens.me"
+```
+
