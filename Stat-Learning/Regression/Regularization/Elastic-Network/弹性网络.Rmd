@@ -1,0 +1,218 @@
+---
+title: "Untitled"
+author: "jessi潘"
+date: "2018年3月25日"
+output: 
+  pdf_document: 
+    number_sections: yes
+    toc: yes
+---
+
+#弹性网络（ Elastic Net）
+  ElasticNet 是一种使用L1和L2先验作为正则化矩阵的线性回归模型.这种组合用于只有很少的权重非零的稀疏模型，比如:class:Lasso, 但是又能保持:class:Ridge 的正则化属性.我们可以使用 l1_ratio 参数来调节L1和L2的凸组合(一类特殊的线性组合)。其中，Lasso用L1惩罚去做变量的选择和降维，而岭回归用L2判罚去压缩系数进而得到更加稳定的预测。
+  弹性网络公式：
+  $$\underset{\beta_0,\beta\in R^{p+1}}{min\,} {\left[\frac{1}{2N}\sum_{i=1}^{N}(y_i-\beta_0-x_i^T\beta)^2+\lambda P_\alpha(\beta)\right]}$$
+  
+  
+$$P_\alpha(\beta)=(1-\alpha)\frac{1}{2}||\beta||_h^2+\alpha||\beta||_h$$
+
+lambda是复杂参数，控制着压缩的程度（0表示没有判罚，无穷表示完全判罚），alpha控制着结果中有多大程度是岭回归和Lasso，如果alpha等于0则是完全岭回归，等于1是完全lasso 
+  
+```{r}
+require(glmnet)#需要预测变量的设计矩阵（包含截距项）和反应变量的数值矩阵
+acs<-read.table("http://jaredlander.com/data/acs_ny.csv",sep=",",header=T,stringsAsFactors = F)
+```
+#在R语言中对包括分类变量(factor)的数据建模时，一般会将其自动处理为虚拟变量或哑变量(dummy variable)为了方便构造数值矩阵,用model.matrix函数，就会输出设计矩阵(生成与预测变量相对应的矩阵还能自动将定性变量变成哑变量)
+
+哑变量（Dummy Variable），又称为虚拟变量、虚设变量或名义变量，从名称上看就知道，它是人为虚设的变量，通常取值为0或1，来反映某个变量的不同属性。对于有n个分类属性的自变量，通常需要选取1个分类作为参照，因此可以产生n-1个哑变量。
+
+```{r}
+testframe<-data.frame(First=sample(1:10,20,replace = T),Second=sample(1:20,20,replace=T),Third=sample(1:10,20,replace = T),Forth=factor(rep(c("Alice","Bob","Charlie","David"),5)),Fifth=ordered(rep(c("Edward","Frank","Georgia","Hank","Isaac"),4)),Sixth=rep(c("a","b"),10),stringsAsFactors = F)
+head(testframe)
+```
+
+#model.matrix(object, data = environment(object),contrasts.arg = NULL, xlev = NULL, ...)
+Fuel ~ Weight + Displacement
+Fuel = α + β1Weight + β2Displacement + ε
+y~x
+y~1+x
+二者都反映了y对x的简单线性模型。第一个公式包含了一个隐式的截距项，而第二个则是一个显式的截距项。
+y~0+x、y~-1+x、y~x-1                y对x过原点的简单线性模型(也就是说，没有截距项)。
+```{r}
+head(model.matrix(First~Second+Forth+Fifth,testframe))
+#Forth被转化成指标性变量（虚拟变量），其列数比Forth水平数少1，Fifth也同理，但是其值不是0,1，因为Fifth是有顺序的因子其一个水平比另一个水平大或者小
+```
+#大部分线性模型中为了避免共线性，基准水平往往不构造成指示性变量，但是这对于弹性网格所需要的设计阵来说是不希望的，为了同样通过model.matrix来构造因子所有水平的示性变量所组成的设计矩阵，需要用build.x整合一种解
+```{r}
+require(useful)
+require(bindrcpp)
+#运用所有水平always use all levels
+head(build.x(First~Second+Forth+Fifth,testframe,contrasts = F))
+```
+
+```{r}
+#build.x(formula, data, contrasts = TRUE, sparse = FALSE)
+head(build.x(First~Second+Forth+Fifth,testframe,contrasts = c(Forth=F,Fifth=T)))#just use all level for Forth
+#(Logical indicating whether a factor's base level is removed. Can be either one single value applied to every factor or a value for each factor. Values will be recycled if necessary.)
+```
+
+在acs上恰当地使用build.x函数可以构造用于glmet的一个很漂亮的设计矩阵。
+```{r}
+acs$Income<-with(acs,FamilyIncome>=1500)#with函数可以对指定的一个数据框的列进行操作，并且不需要每次都指明数据框的名称。
+head(acs)
+```
+
+```{r}
+#建立一个预测矩阵（predictor matrix）
+acsX<-build.x(Income~NumBedrooms+NumChildren+NumPeople+NumRooms+NumUnits+NumVehicles+NumWorkers+OwnRent+YearBuilt+ElectricBill+FoodStamp+HeatingFuel+Insurance+Language-1,data=acs,contrasts = F)#没有截距项
+class(acsX)
+dim(acsX)
+head(acsX)
+topleft(acsX,c=6)
+topright(acsX,c=6)
+```
+```{r}
+#建立一个响应变量集
+acsY<-build.y(Income~NumBedrooms+NumChildren+NumPeople+NumRooms+NumUnits+NumVehicles+NumWorkers+OwnRent+YearBuilt+ElectricBill+FoodStamp+HeatingFuel+Insurance+Language-1,data=acs)
+head(acsY)
+tail(acsY)
+```
+接下来运行glmnet，它默认的在100个不同的lambda值上进行路径拟合，最优路径的选择依赖于使用者，glmnet包中有一个函数cv.glmnet可以自动的计算交叉验证的值，默认alpha等于1，以为着仅使用lasso去计算。选择最优的alpha则需要另一层交叉验证
+```{r}
+require(glmnet)
+set.seed(1863561)
+acsCV1<-cv.glmnet(x=acsX,y=acsY,family="binomial",nfolds = 5)#(默认是十折)
+```
+cv.glmnet函数利用交叉检验，分别用不同的lambda值来观察模型误差。
+cv.glmnet函数返回的最有用的信息就是交叉验证和使交叉验证误差达到最小的lambda值。此时还返回使得交叉验证误差在一个标准误差范围之内的最大的lambda值
+```{r}
+acsCV1$lambda.min
+acsCV1$lambda.1se
+```
+#CV图 
+```{r}
+plot(acsCV1)#不同lambda值对应的交叉验证误差误差。图形顶端的数字代表的是在给定的loglambda值下模型中的变量数，横轴是lambda值的对数，纵轴是模型误差,佳的lambda取值就是在红色曲线的最低点处，对应着变量个数是28个
+```
+
+
+```{r}
+coef(acsCV1,s="lambda.1se")#coef提取估计的系数，但是需要先给定lambda的水平，不然所有的路径都会输出
+#结果发现，一个因子的一部分水平被选上了，而其他部分没有被选上，因为lasso排除了这些彼此相关的变量，同时这里没有标准误差，因此也没有系数的置信区间，
+```
+
+```{r}
+plot(acsCV1$glmnet.fit,xvar = "lambda")
+abline(v=log(c(acsCV1$lambda.min,acsCV1$lambda.1se)),lty=2)#沿着lambda的路径，变量何时进入模型，纵坐标是不同lambda下变量的系数
+```
+
+```{r}
+set.seed(71624)
+acsCV2<-cv.glmnet(x=acsX,y=acsY,family="binomial",nfolds = 5,alpha=0)#岭回归
+```
+
+```{r}
+acsCV2$lambda.min
+acsCV2$lambda.1se
+```
+
+```{r}
+coef(acsCV2,s="lambda.1se")
+```
+
+```{r}
+plot(acsCV2)
+```
+
+```{r}
+plot(acsCV2$glmnet.fit,xvar = "lambda")#系数
+abline(v=log(c(acsCV2$lambda.min,acsCV2$lambda.1se)),lty=2)
+```
+
+寻找最优的alpha值需要另一个交叉验证，需要对不同的alpha值分别进行cv.glmnet函数，为了简便操作，直接运用parallel包、doPallel包和foreach包
+```{r}
+library(parallel)
+library(doParallel)
+library(foreach)
+
+```
+首先构建一个指定域关系的向量，同时也制定foreach将要循环便利的alpha值的顺序
+```{r}
+set.seed(283673)
+theFolds<-sample(rep(1:5,length.out=nrow(acsX)))#个数
+alphas<-seq(from=0.5,to=1,by=0.05)
+```
+
+在做并行之前，需要一个簇，并用makeCluster进行注册#.errorhandling = "remove"表示如果有错误发生则跳出循环，.packages = "glmnet"表示每个“工人”进行再加载，同样#
+```{r}
+set.seed(1)
+cl<-makeCluster(2)#开始并注册一个簇
+registerDoParallel(cl)#注册
+before<-Sys.time()#开始的系统时间
+acsDouble<-foreach(i=1:length(alphas),.errorhandling = "remove",.inorder = F,.multicombine = T,.export = c("acsX","acsY","alphas","theFolds"),.packages = "glmnet") %dopar%
+{
+  print(alphas[i])
+  cv.glmnet(x=acsX,y=acsY,family="binomial",nfolds = 5,foldid = theFolds,alpha=alphas[i])
+}
+after<-Sys.time()
+stopCluster(cl)#结束
+after-before
+```
+在acsDouble中的结果应该是一个包含cv.glmnet的11个例子的列表，可以用sapply去检查列表中每个元素的类别
+```{r}
+sapply(acsDouble,class)#检查里表中每个元素的类别
+```
+为了找最优的lambda和alpha的组合，因此编程从列表中的每个元素中提取交叉验证误差（包括置信区间）和lambda
+```{r}
+extractGlmnetInfo<-function(object)
+{
+  #寻找lambda并赋值
+  lambdaMin<-object$lambda.min
+  lambda1se<-object$lambda.1se
+  #找出上述lambda所在位置
+  whichMin<-which(object$lambda==lambdaMin)
+  which1se<-which(object$lambda==lambda1se)
+  #建立数据框
+  data.frame(lambda.min=lambdaMin,error.min=object$cvm[whichMin],lambda.1se=lambda1se,error.1se=object$cvm[which1se])
+}
+#将自定义函数运用到每个因子中
+alphaInfo<-Reduce(rbind,lapply(acsDouble,extractGlmnetInfo))
+alphaInfo2<-plyr::ldply(acsDouble,extractGlmnetInfo)
+identical(alphaInfo,alphaInfo2)
+```
+```{r}
+alphaInfo$Alpha<-alphas
+alphaInfo
+```
+
+```{r}
+require(reshape)
+require(stringr)
+require(reshape2)
+require(ggplot2)
+alphaMelt<-melt(alphaInfo,id.vars="Alpha",value.name="Value",variable.names="Measure")
+alphaMelt$Type<-str_extract(string = alphaMelt$variable,pattern = "(min)|(1se)")
+alphaMelt$variable<-str_replace(string = alphaMelt$variable,pattern = "\\.(min|1se)",replacement = "")
+alphaCast<-dcast(alphaMelt,Alpha+Type~variable,value.var="value")
+ggplot(alphaCast,aes(x=Alpha,y=error))+geom_line(aes(group=Type))+facet_wrap(~Type,scales="free_y",ncol=1)+geom_point(aes(size=lambda))
+```
+上图表示使用单个标准误方法，下图的标准舞是通关过最小化误差选择的lambda，故上图中alpha为1时最好.
+发现了最优的alpha值为1后重新模拟模型并且检查结果
+```{r}
+set.seed(5127151)
+acsCV3<-cv.glmnet(x=acsX,y=acsY,family="binomial",nfolds = 5,alpha=alphaInfo$Alpha[which.min(alphaInfo$error.1se)])
+```
+
+```{r}
+plot(acsCV3)
+plot(acsCV3$glmnet.fit,xvar="lambda")
+abline(v=log(c(acsCV3$lambda.min,acsCV3$lambda.1se)),lty=2)
+```
+下图显示了家庭中的工人数和FoodStampNo是高收入最强的指标，使用煤热（coal heat）和居无定所（NumUnitsMobile home）是低收入最强的指标，这里没有标准误差，因为glmnet不会去计算。
+```{r}
+thecoef<-as.matrix(coef(acsCV3,s="lambda.1se"))
+coefdf<-data.frame(Value=thecoef,Coefficient=rownames(thecoef))
+coefdf<-coefdf[nonzeroCoef(coef(acsCV3,s="lambda.1se")),]
+
+ggplot(coefdf,aes(x=X1,y=reorder(Coefficient,X1)))+geom_vline(xintercept = 0,color="grey",linetype=2)+geom_point(color="blue")+labs(x="Value",y="Coefficient",title="Coefficient plot")
+```
+
