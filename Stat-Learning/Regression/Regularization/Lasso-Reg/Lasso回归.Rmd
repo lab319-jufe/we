@@ -1,0 +1,19 @@
+---
+title: "Untitled"
+author: "jessi潘"
+date: "2018年3月25日"
+output: 
+  pdf_document: 
+    number_sections: yes
+    toc: yes
+---
+#LASSO回归(Lasso Regression)
+其实该回归与岭回归非常类似，不同的是求解回归系数的目标函数中使用的惩罚函数是L1范数，L1范数表示向量中每个元素绝对值的和$$||x||_1=\sum_{i=1}^n|x_i|$$
+
+
+![](C:/Users/15837/Desktop/picture/9.jpg)
+![](C:/Users/15837/Desktop/picture/10.jpg)
+
+![](C:/Users/15837/Desktop/picture/11.jpg)
+
+其实，LASSO回归于岭回归只是在惩罚函数部分有所不同，但这个不同却让LASSO明显占了很多优势，例如在变量选择上就比岭回归强悍的多。就以直观的图形为例，LASSO回归的惩罚函数映射到二维空间的话，就会形成“角”，一旦“角”与抛物面相交，就会导致beta1为0（如上图所示），这样beta1对应的变量就是一个可抛弃的变量。但是在岭回归过程中，没有“角”的圆形与抛物面相交，出现岭回归系数为0的概率还是非常小的。
