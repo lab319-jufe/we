@@ -1,0 +1,18 @@
+---
+title: "Untitled"
+author: "jessi潘"
+date: "2018年3月25日"
+output: 
+  pdf_document: 
+    number_sections: yes
+    toc: yes
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+##局部回归：
+与样条结果比较相近，最大的差别在于局部回归中的区域之间可以重叠，这就保证了局部回归整体光滑的拟合效果
