@@ -1,0 +1,95 @@
+---
+title: "Untitled"
+author: "jessi潘"
+date: "2018年3月25日"
+output: 
+  pdf_document: 
+    number_sections: yes
+    toc: yes
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+##光滑样条：
+与回归样条类似，但是产生机理不同，一般是通过最小化的一个带光滑惩罚项的残差平方和大的式子来得到光滑样条的结果。
+
+  光滑样条可以用于平滑数据，其表现出来的是非线性特征，甚至可以在新数据上做预测。一个样条是N个函数（每个函数对应唯一的一个点）的线性组合。
+  $$f(x)=\sum_{i=1}^{N}{N_J(x)\theta_J}$$
+  所谓的光滑样条，就是在求解最小二乘时给估计函数(f(x))加上了一定的惩罚，这个有点类似压缩估计。
+  为了对给定数据拟合光滑的曲线，实际上需要做的是找到某个函数，例如f(x)，使它能很好地拟合观测到的数据。也就是说，使得观测值和预测值差的平方和RSS尽可能小。但是这样做会有问题，这样的函和对数据会严重过拟合，会变得异常光滑。而实际上，真正需要的f是能够满足RSS尽可能小的同时曲线也尽可能光滑。为了保证f是光滑的，一个很自然的方法就是最小化
+  $$RSS(f,\lambda)=\sum_{i=1}^{N}{(yi-f(x_i))^2+\lambda\int(f^"(t))^2dt}$$
+这里的lambda是光滑参数（非负），lambda取值较小时，是比较粗糙的光滑；当lambda取值较大时，是比较平滑的光滑。
+  上述式子采用的是“损失函数+惩罚项”的形式，损失函数使得f能更好的你和数据，而惩罚项函数则对函数f的波动性进行了惩罚，惩罚项中的一阶导数衡量的是函数在位置t处的歇了吧，而二阶导数则对应了斜率的变化程度，一般而言，二阶导数衡量的是函数的粗糙度，如果f(t)在t处的波动很剧烈则其绝对值很大，反之则接近于0。积分符号可以表示他在t的取值区域求和，换句话说$\int(f^"(t))^2dt$衡量的是函数f'(t)在整个取值区域内整体的变化情况，如果f非常光滑，那么f'(t)就比较接近常数，$\int(f^"(t))^2dt$就会取较小的值，相反的，如果f的跳跃性很大，那么f'(t)就会变动很大，其二阶导平方的积分就会取较大的值，因此克制，惩罚项会使得f变光滑，lambda越大，就越光滑.
+  选择光滑参数lambda。
+  光滑样条简单的说就是将每一个不同的xi都设为结点的自然三次样条。但是因为将每个数据点都作为一个结点会使得光滑样条的自由度太高，从而变动剧烈。调节参数lambda控制光滑样条的粗糙程度，同时也控制着有效自由度。（自由度是指自由参数的个数，比如在多项式回归或者三次样条中需要拟合的系数，有效自由度的定义：$$df_A=\sum_{i=1}^{n}{S_A}$$）
+
+#光滑样条-r实现
+R中用smooth.spline函数可以完成，其返回一个项目列表，其中x是数据中不重复的值，y是相应的拟合值，df是所用的自由度。用数据diamonds来说明
+#smooth.spline(x, y = NULL, w = NULL, df, spar = NULL, lambda = NULL, cv = FALSE, all.knots = FALSE, nknots = .nknots.smspl,keep.data = TRUE, df.offset = 0, penalty = 1, control.spar = list(), tol = 1e-6 * IQR(x), keep.stuff = FALSE)
+w:权重
+```{r}
+require(ggplot2)
+data(diamonds)
+diaspline1<-smooth.spline(x=diamonds$carat,y=diamonds$price)
+diaspline2<-smooth.spline(x=diamonds$carat,y=diamonds$price,df=2)
+diaspline3<-smooth.spline(x=diamonds$carat,y=diamonds$price,df=10)
+diaspline4<-smooth.spline(x=diamonds$carat,y=diamonds$price,df=20)
+diaspline5<-smooth.spline(x=diamonds$carat,y=diamonds$price,df=50)
+diaspline6<-smooth.spline(x=diamonds$carat,y=diamonds$price,df=100)
+```
+
+
+```{r}
+get.spline.info<-function(object)
+{
+  data.frame(x=object$x,y=object$y,df=object$df)
+}
+require(plyr)
+splindf<-ldply(list(diaspline1,diaspline2,diaspline3,diaspline4,diaspline5,diaspline6),get.spline.info)
+```
+
+```{r}
+head(splindf)
+```
+
+```{r}
+g<-ggplot(diamonds,aes(x=carat,y=price))+geom_point()
+g+geom_line(data=splindf,aes(x=x,y=y,color=factor(round(df,0)),group=df))+scale_color_discrete("Degrees of \nFreedom")
+```
+如图可知，较少的自由度产生直线拟合，而越高的自由度产生的拟合线就偏向于内插线
+
+另外一种样条是基样条，它是基于对原始预测变量的转换来构造的预测变量。最佳的基样条是自然三样条（natural cubic spline)，因为其在内部的节点处创建了平滑过渡，在数据边界点上是采线性。
+三次样条插值(Cubic Spline Interpolation)简称Spline插值，是通过一系列形值点的一条光滑曲线，数学上通过求解三弯矩方程组得出曲线函数组的过程。具有K个节点的自然三次样条是由K个基函数构成的。
+$$N_1(X)=1,N_2(X)=X,N_{K+2}=d_k(X)-d_{K-1}(X)$$
+其中
+$$d_k(X)=\frac{(X-\varepsilon_k)^3_+-(X-\varepsilon_K))^3_+}{\varepsilon_K-\varepsilon_k}$$
+
+这里的varepsilon是节点的位置，t+代表t大于0的部分
+看上去很复杂，但是可直接用splines包中的ns函数就能很容易的拟合自然三次样条。需要输入预测变量以及要输出的新变量的个数
+ns(x, df = NULL, knots = NULL, intercept = FALSE,Boundary.knots = range(x))
+
+```{r}
+require(splines)
+head(ns(diamonds$carat,df=1))
+```
+
+```{r}
+head(ns(diamonds$carat,df=2))
+```
+```{r}
+head(ns(diamonds$carat,df=3))
+```
+
+```{r}
+head(ns(diamonds$carat,df=4))
+```
+
+```{r}
+g<-ggplot(diamonds,aes(x=carat,y=price))+geom_point()
+g+stat_smooth(method = "lm",formula = y~ns(x,6),color="blue")#6个节点
+g+stat_smooth(method = "lm",formula = y~ns(x,3),color="red")#3个节点
+```
