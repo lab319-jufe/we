@@ -1,0 +1,259 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 非线性模型
+线性模型的关键原则就是线性关系，这实际上是反映在系数上而不是预测变量。但这只是一个漂亮的简化假设，但是在实际中往往是非线性的，实例展示的是典型的例子就是非线性最小二乘、样条、决策树和随机森以及广义相加模型（GAMs）
+
+多项式回归、阶梯函数、回归样条、光滑样条、局部回归、广义可加模型
+
+##多项式回归：
+对线性模型的推广思路是以预测变量的幂作为新的预测变量以替代原始变量。举例来说，一个三次回归模型有三个预测变量：x,x^2,x^3
+$$y_i=\beta_0+\beta_1*x_i+\beta_2*x_i^2+...+\beta_d*x_i^d+\varepsilon_i$$
+
+##阶梯函数：
+是将某个预测变量的取值空间切割成K个不同区域，一次生成一个新的定性变量，分段拟合一个常量函数
+C0(X)=I(X<c1)
+C1(X)=I(c1<=X<c2)
+C2(X)=I(c2<=X<c3)
+.....
+CK-1(X)=I(cK-1<=X<cK)
+CK(X)=I(cK<=X)
+I(.)是指示性函数，当条件成立时返回1，否则返回0，由于X只能落在K+1个区间中的某一个，于是对任意X的取值C0(X)+C1(X)+。。+CK(X)=1，以C0(X)、C1(X).....,CK(X)为预测变量用最小二乘法来拟合线性模型：
+因此，当X<c1时，式中每个预测变量都为0，因此beta0成为X<c1时的Y的平均值。
+$$y_i=\beta_0+\beta_1*C_1(x_i)+\beta_2*C_2(x_i)+...+\beta_K*C_K(x_i)+\varepsilon_i$$
+
+#3基函数
+多项式和阶梯函数回归模型实际上是特殊的积函数方法，基本原理是对变量X的函数或变换b1(X),b2(X),...bk(X)进行建模
+$$y_i=\beta_0+\beta_1*b_1(x_i)+\beta_2*b_2(x_i)+...+\beta_K*b_K(x_i)+\varepsilon_i$$
+从而来代替线性模型，对于多项式回归来说，基函数就是bj(xi)=(xi)^j，而对于阶梯函数其基函数就是bj(xi)=I(cj<=xi<cj+1)
+
+##回归样条：
+可看作是前两种的推广，首先将X的取值范围切割成K个区域，在每个区域分别独立拟合一个多项式函数。回归样条的多项式一般有一些限制以保证在区域边界或称为节点的位置，这些多项式得到光滑的链接。只要X被切割成尽可能多的领域，这个方法就能产生非常光滑的拟合效果
+
+#分段多项式
+  在X的不同区域拟合独立的低阶多项式函数，以此取代在X全部取值范围内拟合高阶多项式
+例如分段三次多项式函数在X的不停区域拟合形式如下：
+$$y_i=\beta_0+\beta_1*x_i+\beta_2*x_i^2+\beta_3*x_i^3+\varepsilon_i$$
+其中不同领域内的系数beta0，beta1，beta2，beta3是不一样的。系数发生变化的临界点成为节点：knot，每一个多项式都用最小二乘法来拟合。
+  采用更多的节点可以得到更光滑的分段多项式
+  每个对分段三次多项式施加的约束都有效的释放了一个自由度，减少了模型的复杂程度。
+举个例子，f(ξ1−)=f(ξ1+)意味着β1+ξ1β4=β2+ξ1β5，在这种情形下，因为存在两个约束，我们期减少了两个参数。
+  在一般情况下，与K个结点一同使用的三次样条会产生4+K个自由度
+  d阶样条的一般定义是分段d阶多项式，同时在每个结点知道d-1阶导数都是连续的。因此，线性样条可以通过下方式得到：在每个区域内拟合一条直线，同时要求在各结点处满足连续性。
+
+#样条基函数
+上述的回归样条略显复杂，要保证多项式自身或者他的前d-1阶导数是连续的条件下拟合d阶分段多项函数有时并不轻松。实际上，运用基函数模型来表示回归样条，并通过选择合适的基函数，一个有K个结点的三次样条函数可以表示如下：
+$$y_i=\beta_0+\beta_1*b_1(x_i)+\beta_2*b_2(x_i)+...+\beta_{K+3}*b_{K+3}(x_i)+\varepsilon_i$$
+该模型也可用个最小二乘法进行拟合。
+ 确定结点的个数和位置
+ 实践证明，令结点在数据上呈现均匀分布是一种比较有效的结点选择方式。这种方法的一种实现方式是：首先确定需要的自由度，然后依靠软件自用在数据的巨弩云分位数点上设置相应个数的结点样条函数的自由度选定一种是尝试多个不同的节点个数，然后从中选择呢和的“形状最理想”的曲线，另一种较为客观的方法是使用交叉验证法。使用交叉验证是，首先已出一部分数据，然后用省区的数据来拟合，接着用拟合得到的样条函数来对溢出的那一部分进行预测，这样不断重复多次知道所有数据都被移除过一次，最后计算整体的交叉验证RSS。整个步骤对不同的结点数目K不断重复，选择RSS最小的样条函数对应的K。
+
+
+##光滑样条：
+与回归样条类似，但是产生机理不同，一般是通过最小化的一个带光滑惩罚项的残差平方和大的式子来得到光滑样条的结果。
+
+  光滑样条可以用于平滑数据，其表现出来的是非线性特征，甚至可以在新数据上做预测。一个样条是N个函数（每个函数对应唯一的一个点）的线性组合。
+  $$f(x)=\sum_{i=1}^{N}{N_J(x)\theta_J}$$
+  所谓的光滑样条，就是在求解最小二乘时给估计函数(f(x))加上了一定的惩罚，这个有点类似压缩估计。
+  为了对给定数据拟合光滑的曲线，实际上需要做的是找到某个函数，例如f(x)，使它能很好地拟合观测到的数据。也就是说，使得观测值和预测值差的平方和RSS尽可能小。但是这样做会有问题，这样的函和对数据会严重过拟合，会变得异常光滑。而实际上，真正需要的f是能够满足RSS尽可能小的同时曲线也尽可能光滑。为了保证f是光滑的，一个很自然的方法就是最小化
+  $$RSS(f,\lambda)=\sum_{i=1}^{N}{(yi-f(x_i))^2+\lambda\int(f^"(t))^2dt}$$
+这里的lambda是光滑参数（非负），lambda取值较小时，是比较粗糙的光滑；当lambda取值较大时，是比较平滑的光滑。
+  上述式子采用的是“损失函数+惩罚项”的形式，损失函数使得f能更好的你和数据，而惩罚项函数则对函数f的波动性进行了惩罚，惩罚项中的一阶导数衡量的是函数在位置t处的歇了吧，而二阶导数则对应了斜率的变化程度，一般而言，二阶导数衡量的是函数的粗糙度，如果f(t)在t处的波动很剧烈则其绝对值很大，反之则接近于0。积分符号可以表示他在t的取值区域求和，换句话说$\int(f^"(t))^2dt$衡量的是函数f'(t)在整个取值区域内整体的变化情况，如果f非常光滑，那么f'(t)就比较接近常数，$\int(f^"(t))^2dt$就会取较小的值，相反的，如果f的跳跃性很大，那么f'(t)就会变动很大，其二阶导平方的积分就会取较大的值，因此克制，惩罚项会使得f变光滑，lambda越大，就越光滑.
+  选择光滑参数lambda。
+  光滑样条简单的说就是将每一个不同的xi都设为结点的自然三次样条。但是因为将每个数据点都作为一个结点会使得光滑样条的自由度太高，从而变动剧烈。调节参数lambda控制光滑样条的粗糙程度，同时也控制着有效自由度。（自由度是指自由参数的个数，比如在多项式回归或者三次样条中需要拟合的系数，有效自由度的定义：$$df_A=\sum_{i=1}^{n}{S_A}$$）
+
+
+##局部回归：
+与样条结果比较相近，最大的差别在于局部回归中的区域之间可以重叠，这就保证了局部回归整体光滑的拟合效果
+
+##广义可加模型：
+实际上就是将上述模型推广到多个预测变量的情形。
+上述几种都是基于单个预测变量X预测相应变量Y的光滑模型。这些模型可被看作是对简单线性回归模型的推广。而广义可加模型是讨论基于多个变量X1,X2,X3,,,,Xp预测Y的光滑模型。
+  当因变量和自变量不呈线性关系时，可用广义相加模型（GAM）。GAM可对部分或全部的自变量采用平滑函数的方法建立模型，函数可以是非参数的形式，适用于多种分布类型、多种复杂非线性关系的分析。
+广义相加模型中因变量的分布类型、联系函数和广义线性模型相同。
+  广义相加模型是独立的对每一个预测变量做的光滑曲线。就像名字的意义一样，它很一般，并且在一系列的回归中都可用，意味着反应变量可以是连续的，二元的，技术数据和其他数据。
+![](C:/Users/15837/Desktop/picture/13.jpg)
+
+$$E(Y|X_1,X_2,...,X_p)=\alpha+f_1(X_1)+f_2(X_2)+...+f_p(X_p)$$
+其中X1,X2....Xp是普通的变量，fj是任意的光滑函数
+
+##非线性最小二乘
+ 最小二乘问题是为了找到测量值和模型预测值之间的最小误差，该问题可以简单的表示为
+ ：$$min||模型-样本||^2=\underset{x}{min\,}||e(x)||^2$$
+ 其中e(x)为模型和样本之间的误差
+    下图的数据拟合可以很好的说明最小二乘问题的结果和效果。
+ ![](C:/Users/15837/Desktop/picture/12.jpg)
+ 
+  就非线性最小二乘而言，我们通常无法直接写出其导数形式（函数过于复杂），因此我们不再去试图直接找到全局最小值，而是退而求其次通过不停的迭代计算寻找到函数的局部最小值(LocalMinimizer)，并认为该局部最小值能够使得我们的目标函数取得最优解（最小值），这就是非线性最小二乘的通常求解思路。
+  非线性最小二乘模型是使用平方误差损失，来寻找一般函数（非线性）的最优参数的估计值。设非线性系统的模型为y=f(x，θ)，常用于传感器参数设定。
+  式中y是系统的输出，x是输入，θ是参数(它们可以是向量)。这里的非线性是指对参数θ的非线性模型，不包括输入输出变量随时间的变化关系。在估计参数时模型的形式f是已知的，经过N次实验取得数据(x1,y1),(x2,y2)，…,(xn，yn)。估计参数的准则(或称目标函数)选为模型的误差平方和非线性最小二乘法就是求使Q达到极小的参数估计值娈。
+  由于 f的非线性，所以不能象线性最小二乘法那样用求多元函数极值的办法来得到参数估计值，而需要采用复杂的优化算法来求解。常用的算法有两类，一类是搜索算法，另一类是迭代算法。
+  搜索算法的思路是:按一定的规则选择若干组参数值，分别计算它们的目标函数值并比较大小;选出使目标函数值最小的参数值，同时舍弃其他的参数值;然后按规则补充新的参数值，再与原来留下的参数值进行比较，选出使目标函数达到最小的参数值。如此继续进行，直到选不出更好的参数值为止。以不同的规则选择参数值，即可构成不同的搜索算法。常用的方法有单纯形搜索法、复合形搜索法、随机搜索法等。
+  迭代算法是从参数的某一初始猜测值θ出发，然后产生一系列的参数点，如果这个参数序列收敛到使目标函数极小的参数点娈，那么对充分大的N就可用N 作为娈。迭代算法的一般步骤是:
+① 给出初始猜测值θ，并置迭代步数i=1。
+② 确定一个向量v作为第i步的迭代方向。
+③ 用寻优的方法决定一个标量步长ρ
+④ 检查停机规则是否满足，如果不满足,则将i加1再从②开始重复;如果满足，则取θ为值。
+典型的迭代算法有牛顿-拉夫森法、高斯迭代算法、麦夸特算法、变尺度法等。
+
+一个常见的非线性模型的应用就是，用无线WIFI连接设备的位置来确定WIFI热端部的位置。在这样一个问题中，设备在二维网格里的位置是已知的，他们会报告离热点的距离，但是由于信号强度的波动，报告的距离会有一些随机噪音。有一个样本数据用作实例操作
+```{r}
+load("C:/Users/15837/Desktop/wifi.rdata")
+```
+
+```{r}
+head(wifi)#x,y是设备在网格中的位置
+```
+
+```{r}
+require(ggplot2)
+ggplot(wifi,aes(x=x,y=y,color=Distance))+geom_point()+scale_color_gradient2(low="blue",mid="white",high = "red",midpoint = mean(wifi$Distance))#蓝色到红色表示由近到远
+```
+设备i和热点之间的距离公式是：
+$$d=\sqrt{(\beta_x-x_i)^2+(\beta_y-y_i)^2}$$
+其中beta_x和beta_y分别代表热点的位置横坐标和纵坐标
+R中计算非线性最小二乘的标准函数是nls。这里的函数和lm函数相似，系数也被清楚的指定，系数的初始值放在List中。
+```{r}
+wifimodl<-nls(Distance~sqrt((betaX-x)^2+(betaY-y)^2),data=wifi,start=list(betaX=50,betaY=50))
+summary(wifimodl)
+```
+热点位置的估计为betaX=17.851,betay=52.906 
+```{r}
+ggplot(wifi,aes(x=x,y=y,color=Distance))+geom_point()+scale_color_gradient2(low="blue",mid="white",high = "red",midpoint = mean(wifi$Distance))+geom_point(data=as.data.frame(t(coef(wifimodl))),aes(x=betaX,y=betaY),size=5,color="green")
+```
+
+#光滑样条
+R中用smooth.spline函数可以完成，其返回一个项目列表，其中x是数据中不重复的值，y是相应的拟合值，df是所用的自由度。用数据diamonds来说明
+#smooth.spline(x, y = NULL, w = NULL, df, spar = NULL, lambda = NULL, cv = FALSE, all.knots = FALSE, nknots = .nknots.smspl,keep.data = TRUE, df.offset = 0, penalty = 1, control.spar = list(), tol = 1e-6 * IQR(x), keep.stuff = FALSE)
+w:权重
+```{r}
+require(ggplot2)
+data(diamonds)
+diaspline1<-smooth.spline(x=diamonds$carat,y=diamonds$price)
+diaspline2<-smooth.spline(x=diamonds$carat,y=diamonds$price,df=2)
+diaspline3<-smooth.spline(x=diamonds$carat,y=diamonds$price,df=10)
+diaspline4<-smooth.spline(x=diamonds$carat,y=diamonds$price,df=20)
+diaspline5<-smooth.spline(x=diamonds$carat,y=diamonds$price,df=50)
+diaspline6<-smooth.spline(x=diamonds$carat,y=diamonds$price,df=100)
+```
+
+
+```{r}
+get.spline.info<-function(object)
+{
+  data.frame(x=object$x,y=object$y,df=object$df)
+}
+require(plyr)
+splindf<-ldply(list(diaspline1,diaspline2,diaspline3,diaspline4,diaspline5,diaspline6),get.spline.info)
+```
+
+```{r}
+head(splindf)
+```
+
+```{r}
+g<-ggplot(diamonds,aes(x=carat,y=price))+geom_point()
+g+geom_line(data=splindf,aes(x=x,y=y,color=factor(round(df,0)),group=df))+scale_color_discrete("Degrees of \nFreedom")
+```
+如图可知，较少的自由度产生直线拟合，而越高的自由度产生的拟合线就偏向于内插线
+
+另外一种样条是基样条，它是基于对原始预测变量的转换来构造的预测变量。最佳的基样条是自然三样条（natural cubic spline)，因为其在内部的节点处创建了平滑过渡，在数据边界点上是采线性。
+三次样条插值(Cubic Spline Interpolation)简称Spline插值，是通过一系列形值点的一条光滑曲线，数学上通过求解三弯矩方程组得出曲线函数组的过程。具有K个节点的自然三次样条是由K个基函数构成的。
+$$N_1(X)=1,N_2(X)=X,N_{K+2}=d_k(X)-d_{K-1}(X)$$
+其中
+$$d_k(X)=\frac{(X-\varepsilon_k)^3_+-(X-\varepsilon_K))^3_+}{\varepsilon_K-\varepsilon_k}$$
+
+这里的varepsilon是节点的位置，t+代表t大于0的部分
+看上去很复杂，但是可直接用splines包中的ns函数就能很容易的拟合自然三次样条。需要输入预测变量以及要输出的新变量的个数
+ns(x, df = NULL, knots = NULL, intercept = FALSE,Boundary.knots = range(x))
+
+```{r}
+require(splines)
+head(ns(diamonds$carat,df=1))
+```
+
+```{r}
+head(ns(diamonds$carat,df=2))
+```
+```{r}
+head(ns(diamonds$carat,df=3))
+```
+
+```{r}
+head(ns(diamonds$carat,df=4))
+```
+
+```{r}
+g<-ggplot(diamonds,aes(x=carat,y=price))+geom_point()
+g+stat_smooth(method = "lm",formula = y~ns(x,6),color="blue")#6个节点
+g+stat_smooth(method = "lm",formula = y~ns(x,3),color="red")#3个节点
+```
+#广义相加模型
+
+拟合广义相加模型的包mgcv和glm有相同的语法
+```{r}
+creditnames<-c("checking","duration","credithistory","purpose","creditamount","savings","employment","insatllmenrate","gendermarital","otherdebtors","yearsatresidence","realestate","age","otherinstallment","housing","existingcredits","Job","numliable","phone","foreign","credit")
+theURL<-"http://archive.ics.uci.edu/ml/machine-learning-databases/statlog/german/german.data"
+credit<-read.table(theURL,sep="",header=F,col.names=creditnames,stringsAsFactors=F)
+```
+
+```{r}
+head(credit)
+```
+将代码转换成有意义的数据
+```{r}
+head(credit[,c("credithistory","purpose","employment","credit")])
+```
+
+```{r}
+credithistory<-c(A30="All Paid",A31="All Paid This Bank",A32="Up To Date",A33="Late Payment",A34="Critical Account")
+purpose<-c(A40="car (new)",A41="car(used)",A42="furniture/equipment",A43="radio/television",A44="domestic application",A45="repairs",A46="education",A47="(vacation-does not exist?)",A48="retraining",A49="business",A50="others")
+employment<-c(A71="umemployment",A72="<1 year",A73="1-4 years",A74="4-7 years",A75=">=7 years")
+```
+
+```{r}
+credit$credithistory<-credithistory[credit$credithistory]
+credit$purpose<-purpose[credit$purpose]
+credit$employment<-employment[credit$employment]
+```
+
+```{r}
+credit$credit<-ifelse(credit$credit==1,"Good","Bad")
+credit$credit<-factor(credit$credit,levels = c("Good","Bad"))
+```
+
+```{r}
+head(credit[,c("credithistory","purpose","employment","credit")])
+```
+
+```{r}
+require(useful)
+ggplot(credit,aes(x=creditamount,y=credit))+geom_jitter(position = position_jitter(height = .2))+facet_grid(credithistory~employment)+xlab("credit amount")+theme(axis.text.x = element_text(angle = 90,hjust = 1,vjust = .5))+scale_x_continuous(labels = multiple)
+```
+基于信用额度、信用历史、雇佣情况、好信用与坏信用
+
+```{r}
+ggplot(credit,aes(x=creditamount,y=age))+geom_point(aes(color=credit))+facet_grid(credithistory~employment)+xlab("credit amount")+theme(axis.text.x = element_text(angle = 90,hjust = 1,vjust = .5))+scale_x_continuous(labels = multiple)
+```
+年龄与信用额度
+上两图克制线性关系并不明显，所以用GAM可能更合适
+gam类似使用其他模型例如lm,glm，都是采用表达式参数形式。不同的是像creditamont和age这种连续变量可以被像样条或张量积这样的非参数光滑函数转化
+#A GAM formula, or a list of formulae (see formula.gam and also gam.models). 
+s(..., k=-1,fx=FALSE,bs="tp",m=NA,by=NA,xt=NULL,id=NULL,sp=NULL,pc=NULL)
+```{r}
+require(mgcv)
+creditgam<-gam(credit~creditamount+age+credithistory+employment,data=credit,family = binomial(link = "logit"))
+summary(creditgam)
+```
+
+```{r}
+plot(creditgam,select = 1,se=T,shade=T)
+plot(creditgam,select = 2,se=T,shade=T)
+```
+分别展示了creditamount和age以及样条或张量积的光滑作用，灰色部分代表光滑曲线的置信区间
