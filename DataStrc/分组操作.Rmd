@@ -1,0 +1,217 @@
+---
+title: "R 分组操作"
+output: html_notebook
+---
+
+apply函数
+apply,只能运用于矩阵，所有元素都是同一数据类型，第一个参数是矩阵，第二个参数是应用函
+数维度：1代表对行进行处理，2代表对列进行处理，第三个参数为为处理数据所调用的函数
+```{r}
+theMatix<-matrix(1:9,nrow = 3)
+apply(theMatix,1,sum)
+#> [1] 12 15 18
+rowSums(theMatix)
+#> [1] 12 15 18
+apply(theMatix,2,sum)
+#> [1] 6 15 24
+colSums(theMatix)
+#> [1] 6 15 24
+theMatix[2,1]<NA
+apply(theMatix,1,sum)
+#> [1] 12 NA 18
+apply(theMatix,1,sum,na.rm=T)
+#> [1] 12 13 18
+```
+
+lapply函数
+将一个函数运用到一个列表的每个元素，并将结果作为列表返回#
+```{r}
+thelist<-list(A=matrix(1:9,3),B=1:5,C=matrix(1:4,2),D=2)
+thelist
+lapply(thelist,sum)
+```
+
+sapply函数
+列表的处理比较麻烦，用sapply将lapply的结果转化为向量，除了返回值类型不一样，其他都不
+变#
+
+```{r}
+sapply(thelist,sum)
+```
+mapply函数
+可以将调用的函数运用到多个列表的每一个元素中去#
+```{r}
+firstlist<-list(A=matrix(1:16,4),B=matrix(1:16,2),C=1:5)
+secondlist<-list(A=matrix(1:16,4),B=matrix(1:16,8),C=15:1)
+mapply(identical,firstlist,secondlist)
+simpleFunc<-function(x,y)
+{
+NROW(x)+NROW(y)
+}
+firstlist
+secondlist
+mapply(simpleFunc,firstlist,secondlist)
+```
+
+tapply函数
+它通常会有三个参数，第一个参数代表数据，第二个参数表示如何对数据进行分组操作，第三个
+参数指定每一个分组内应用什么函数。也就是说tapply函数就是把数据按照一定方式分成不同的
+组，再在每一组数据内进行某种运算。#
+```{r}
+height <-c(174, 165, 180, 171, 160)
+sex<-c("F","F","M","F","M")
+tapply(height,sex,mean)
+class<-c(1,2,1,1,2,2)
+score<-c(90,89,70,89,98,60)
+whole<-data.frame(class,score)
+tapply(whole$score,whole$class,mean)
+```
+
+by函数
+可以当成dataframe上的tapply。indices应当和dataframe每列的长度相同。返回值是by类型的
+object。若simplify=FALSE，本质上是个list: by(dataframe, INDICES, FUN, …,simplify=TRUE)
+#
+
+
+```{r}
+df<-data.frame(a=c(1:5),b=c(6:10))
+ind<-c(1,1,1,2,2)
+res<-by(df,ind,colMeans)#属于1类：（1+2+3）/3=2，（6+7+8）/3=7#
+res
+```
+
+
+vapply函数
+类似于sapply，但是提供了第三个参数FUN.VALUE用以指明返回值的形式，可以看作返回值的
+模板。#
+```{r}
+lst <-list(a=c(1:5), b=c(6:10))
+res <-vapply(lst, function(x) c(min(x), max(x)), c(min.=0, max.=0))
+res
+```
+
+rapply函数
+rapply是递归版的lappy。基本原理是对list作遍历，如果其中有的元素仍然是list，则继续遍历；
+对于每个非list类型的元素，如果其类型是classes参数指定的类型之一，则调用FUN。
+classes=“ANY”表示匹配所有类型。#
+```{r}
+lst <-list(a=list(aa=c(1:5), ab=c(6:10)), b=list(ba=c(1:10)))
+lst
+rapply(lst, sum, how='list')
+rapply(lst, sum, how='unlist')
+```
+
+aggregate
+```{r}
+require(ggplot2)
+#> Loading required package: ggplot2
+data(diamonds)
+head(diamonds)
+aggregate(price~cut,diamonds,mean)#mean)#第一个参数是formula，其规定变量price按照cut类别分组面第
+#二个参数是所用数据的来源，第三个参数为应用于分组数据的函数
+aggregate(price~cut+color,diamonds,mean)
+aggregate(cbind(price,carat)~cut,diamonds,mean)
+aggregate(cbind(price,carat)~cut+color,diamonds,mean)
+```
+
+
+plyr函数族
+ ddply函数
+以数据框为输入值，根据几个变量对其分类并作相应的运算#
+
+```{r}
+require(plyr)
+#> Loading required package: plyr
+head(baseball)
+baseball$sf[baseball$year<1954]<0
+any(is.na(baseball$sf))
+#> [1] FALSE
+baseball$hbp[is.na(baseball$hbp)]<0
+any(is.na(baseball$hbp))
+#> [1] FALSE
+baseball<-baseball[baseball$ab>=50,]
+baseball$OBP<-with(baseball,(h+bb+hbp)/(ab+bb+hbp+sf))#with函数可以对指定的一个数据框的列
+#进行操作且无需每次操作都要指明数据框的名称#
+tail(baseball)
+obp<-function(data)
+{
+c(OBP=with(data,sum(h+bb+hbp)/sum(ab+bb+hbp+sf)))
+}
+careerOBP<-ddply(baseball,.variables = "id",.fun = obp)
+careerOBP<-careerOBP[order(careerOBP$OBP,decreasing = T),]
+head(careerOBP$OBP,10)
+```
+
+
+llply函数
+```{r}
+thelist<-list(A=matrix(1:9,3),B=1:5,C=matrix(1:4,2),D=2)
+lapply(thelist,sum)
+llply(thelist,sum)
+identical(lapply(thelist,sum),llply(thelist,sum))
+sapply(thelist,sum)
+laply(thelist,sum)#laply得到的向量不含有名称#
+```
+
+
+plyr辅助函数
+```{r}
+aggregate(price~cut,diamonds,each(mean,median))#使用函数时能调用多个函数#
+system.time(dlply(baseball,"id",nrow))
+```
+
+
+data.table
+```{r}
+require(data.table)
+#> Loading required package: data.table
+theDF<-data.frame(A=1:10,B=letters[1:10],C=LETTERS[11:20],D=rep(c("one","two","three"),length.out=10))
+theDT<-data.table(A=1:10,B=letters[1:10],C=LETTERS[11:20],D=rep(c("one","two","three"),length.out=10))
+theDF
+theDT
+class(theDF$B)
+#> [1] "factor"
+class(theDT$B)
+diamondsDT<-data.table(diamonds)
+diamondsDT
+theDT[1:2,]
+theDT[theDT$A>=7,]
+#访问data.frame的多个列数据时必须使用字符向量，但是访问data.table多个列数据时应该制定列名为列
+#表类型,若必须指定为字符型则用with=F#
+theDT[,list(A,C)]
+theDT[,B]
+theDT[,"B",with=F]
+theDT[,c("A","C"),with=F]
+```
+
+
+
+指针
+```{r}
+tables()#现在有几个data.table在内存里#
+setkey(theDT,D)#对theDF增加一个指针，用D来索引data.table#
+theDT
+key(theDT)
+tables()
+theDT["one",]
+theDT[c("one","two"),]
+setkey(diamondsDT,cut,color)
+diamondsDT
+diamondsDT[J("Ideal","E"),]#根据两个指针访问行，必须用到J函数#
+diamondsDT[J("Ideal",c("E","D")),]
+```
+
+data.table的汇总
+```{r}
+
+aggregate(price~cut,diamonds,mean)
+diamondsDT[,mean(price),by=cut]#两者的列名不同#
+diamonds1<-diamondsDT[,mean(price),by=cut]
+diamondsDT[,list(price=mean(price)),by=cut]
+diamondsDT[,mean(price),by=list(cut,color)]
+diamondsDT[,list(price=mean(price),carat=mean(carat)),by=cut]#汇总多个参数，按不同标准汇
+#总每一列#
+diamondsDT[,list(price=mean(price),carat=mean(carat),caratsum=sum(carat)),by=cut]
+diamondsDT[,list(price=mean(price),carat=mean(carat)),by=list(cut,color)]
+```
+
