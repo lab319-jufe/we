@@ -1,0 +1,135 @@
+---
+title: "R 数据整理"
+output: html_notebook
+目录： 数据整理
+◦ rbin和cbind
+◦ cbind可以给列向量赋予新的名称
+◦  连接
+◦  reshape2
+---
+
+rbin函数／纵向追加，cbind函数／横向追加#
+
+```{r}
+sports<-c("
+hockey","baseball","football")
+league<-c("nhl","mlb","nfl")
+trophy<-c("stanley cup","commissioner's trophy","vince lombardi trophy")
+trop1<-cbind(sports,league,trophy)
+trop1
+trop2<-data.frame(sports=c("basketball","golf"),league=c("nba","pga"),trophy=c("larryo'brien","wanaaker"),stringsAsFactors = F)
+trop3<-rbind(trop1,trop2)
+trop3
+```
+
+
+```{r}
+ID<-c(1,2,3,4)
+name<-c("A","B","C","D")
+score<-c(60,70,80,90)
+sex<-c("M","F","M","M")
+student1<-data.frame(ID,name)
+student2<-data.frame(score,sex)
+total_student2<-cbind(student1,student2)
+total_student2
+ID<-c(1,2,3,4)
+name<-c("A","B","C","D")
+student1<-data.frame(ID,name)
+ID<-c(5,6,7,8)
+name<-c("E","F","G","H")
+student2<-data.frame(ID,name)
+total_student3<-rbind(student1,student2)
+total_student3
+```
+
+
+cbind可以给列向量赋予新的名
+称
+```{r}
+cbind(Sport=sports,Association=league,Prize=trophy)
+colnames(trop3)
+```
+```{r}
+#连接 （此段代码无法直接跑出，需要事先进行下载--露璐学姐）
+download.file(url = "http://jaredlander.com/data/US_Foreign_Aid.zip",destfile="data/ForeignAid.zip")
+unzip("data/ForeignAid.zip",exdir = "data")
+file("US_Foreign_Aid.zip")
+require(stringr)
+#> Loading required package: stringr
+theFiles<-dir("data/",pattern = "\\.csv")#遍历文件的列表#
+for (a in theFiles)
+{
+nameToUse<-str_sub(string = a,start = 12,end = 18)
+temp<-read.table(file = file.path("data",a),header = T,sep = ",",stringsAsFactors =
+F)
+assign(x=nameToUse,value=temp)
+}
+ID<c(
+1,2,3,4)
+name<-c("A","B","C","D")
+score<-c(60,70,80,90)
+student1<-data.frame(ID,name)
+student2<-data.frame(ID,score)
+total_student1<-merge(student1,student2,by="ID")
+total_student1
+Aid90s900s<-merge(x=Aid_90s,y=Aid_00s,by.x = c("Country.Name","Program.Name"),by.y = c
+("Country.Name","Program.Name"))#合并两个数据框,by.x指定左边数据框的匹配列，by.y指定右边数
+#据框的匹配列:指定依据哪些行合并数据框,默认值为相同列名的列#
+head(Aid90s900s)
+```
+
+
+plyr中的join,与merge的功能相似，但是速度要快，最大的缺点是每一个表的匹配列一样
+
+
+
+```{r}
+require(plyr)#备注一下  这里的数据用到的上面所涉及到的数据 依旧需要事先下载的
+#> Loading required package: plyr
+Aid90s900s<-join(x=Aid_90s,y=Aid_00s,by=c("Country.Name","Program.Name"))
+head(Aid90s900s)
+frameName<-str_sub(string = theFiles,start=12,end = 18)#str_sub为数据库框建立一个名字#
+frameList<-vector("list",length(frameName))
+names(frameList)<-frameName
+for (a in frameName)
+{
+frameList[[a]]<-eval(parse(text = a))
+}
+head(frameList[["Aid_00s"]])
+require(data.table)
+#> Loading required package: data.table
+dt90s<-data.table(Aid_90s,key = c("Country.Name","Program.Name"))
+dt00s<-data.table(Aid_00s,key = c("Country.Name","Program.Name"))
+dt0090<dt90s[dt00s]#dt90s在右边，dt00s在左边#
+```
+
+reshape2
+```{r}
+head(Aid_00s)#若想设计为每一行为一个独立的城市——项目——年，并且把美元金额存在一列中#
+require(reshape2)
+melt00<-melt(Aid_00s,id.vars=c("Country.Name","Program.Name"),variable.name="year",value.name="Dollars")#id.vars用来指定那一列唯一的标识一行#
+tail(melt00,10)
+require(scales)
+melt00$year<-as.numeric(str_sub(melt00$year,start=3,6))#将年份前面的FY去掉将其转化为数值,str_sub: 截取字符串#
+meltAgg<-aggregate(Dollars~Program.Name+year,data = melt00,sum,na.rm=T)
+meltAgg$Program.Name<-str_sub(meltAgg$Program.Name,start = 1,end = 10)
+require(ggplot2)
+#> Loading required package: ggplot2
+p<-ggplot(meltAgg,aes(x=year,y=Dollars))+
+geom_line(aes(group=Program.Name))+facet_wrap(~Program.Name)+scale_x_continuous(breaks=seq(from=2000,to=2009,by=2))+theme(axis.text.x=element_text(angle=90,vjust=1,hjust=0))
+p
+require(ggplot2)
+```
+dcast,第一个参数是要用到的数据，第二个参数是公式，表达式的左边的列名依然作为列，表达
+式右边的列名变为行，第三个参数是（包含要填充到新列中的值）列（一个字符），代表公式右
+边参数的唯一值
+```{r}
+cast00<-dcast(melt00,Country.Name+Program.Name~year,value.var = "Dollars")
+tail(cast00,10)
+```
+
+
+
+
+
+
