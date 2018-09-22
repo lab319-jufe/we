@@ -79,7 +79,9 @@ Hi funpeng! You've successfully authenticated, but GitHub does not provide shell
 
 
 
-## 多人合作的方式：
+
+
+## 还有一种多人合作的方式，更简单：
 https://blog.csdn.net/catshitone/article/details/45969775
 
   
