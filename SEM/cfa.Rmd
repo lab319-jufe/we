@@ -1,0 +1,162 @@
+---
+title: "cfa"
+output: html_document
+---
+
+#导入数据
+```{r}
+dat<-read.csv(file="dat.csv",1)
+dat_cfa<-dat
+```
+
+#14题（三因子模型包含第8，16题）
+##单因子模型
+使用lavaan包，根据lavaan的语法，需要先将模型结构存入一个对象中
+```{r}
+library(lavaan)
+cfamodel<-'
+f1=~teamind01+teamind09+teamind13+teamind15+teamind17+teamind18
++teamind07+teamind04+teamind10+teamind19+teamind20
++teamind02+teamind08+teamind16
+'
+```
+    
+lavaan包的cfa函数可以直接构建cfa模型
+    
+```{r}
+fit.1<-cfa(cfamodel,data=dat_cfa)
+summary(fit.1)
+```
+    
+fitMeasures函数可以计算模型拟合的指标
+    
+
+```{r}
+fm.1<-fitMeasures(fit.1,c("chisq","df","pvalue","cfi","nfi","ifi","gfi","rmsea","EVCI","AIC"))
+as.data.frame(fm.1)
+```
+
+    
+semPaths函数对模型进行可视化，可以调节相应的参数
+    
+
+```{r}
+library(semPlot)
+semPaths(fit.1, intercept = FALSE, what= "std",sizeMan = 8,sizeLat=12,
+         residuals = FALSE, exoCov = FALSE)
+```
+##双因子模型
+```{r}
+library(lavaan)
+cfamodel<-'
+f1=~teamind01+teamind09+teamind13+teamind15+teamind17+teamind18
+f2=~teamind04+teamind02+teamind07+teamind10+teamind19+teamind20+teamind08+teamind16
+'
+```
+```{r}
+fit.2<-cfa(cfamodel,data=dat_cfa)
+summary(fit.2)
+```
+```{r}
+fm.2<-fitMeasures(fit.2,c("chisq","df","pvalue","cfi","nfi","ifi","gfi","rmsea","EVCI","AIC"))
+as.data.frame(fm.2)
+```
+```{r}
+
+semPaths(fit.2, intercept = FALSE, what= "std",sizeMan = 8,sizeLat=12,
+         residuals = FALSE, exoCov = FALSE)
+```
+##三因子模型1（f3=~2，8，16，n=438）
+```{r}
+###########3因子模型1 f3=~2,8,16
+library(lavaan)
+cfamodel<-'
+f1=~teamind01+teamind09+teamind13+teamind15+teamind17+teamind18
+f2=~teamind04+teamind07+teamind10+teamind19+teamind20
+f3=~teamind02+teamind08+teamind16
+'
+```
+```{r}
+fit.3.1<-cfa(cfamodel,data=dat_cfa)
+summary(fit.3.1)
+```
+```{r}
+fm.3.1<-fitMeasures(fit.3.1,c("chisq","df","pvalue","cfi","nfi","ifi","gfi","rmsea","EVCI","AIC"))
+as.data.frame(fm.3.1)
+```
+```{r}
+semPaths(fit.3.1, intercept = FALSE, what= "std",sizeMan = 8,sizeLat=12,
+         residuals = FALSE, exoCov = FALSE)
+```
+
+
+##四因子模型
+```{r}
+library(lavaan)
+cfamodel<-'
+f1=~teamind01+teamind09+teamind13+teamind15
+f2=~teamind04+teamind07+teamind10+teamind19+teamind20
+f3=~teamind02+teamind08+teamind16
+f4=~teamind18+teamind17
+'
+```
+
+```{r}
+fit.4.1<-cfa(cfamodel,data=dat_cfa)
+summary(fit.4.1)
+```
+
+```{r}
+fm.4.1<-fitMeasures(fit.4.1,c("chisq","df","pvalue","cfi","nfi","ifi","gfi","rmsea","EVCI","AIC"))
+as.data.frame(fm.4.1)
+```
+
+```{r}
+library(semPlot)
+semPaths(fit.4.1, intercept = FALSE, what= "std",sizeMan = 8,sizeLat=12,
+         residuals = FALSE, exoCov = FALSE)
+```
+
+
+##模型比较
+    
+需要比较几个CFA模型的优劣，比较的结果保存为xlsx文件
+    
+```{r}
+library(xlsx)
+fm1<-data.frame(fm.1,fm.2,fm.3.1,fm.4.1)
+write.xlsx(fm1,"cfa模型结果0.xlsx",sheetName = "模型比较",append = TRUE)
+
+```
+```{r}
+wb<-loadWorkbook("cfa模型结果0.xlsx")
+sheet<-getSheets(wb)
+
+addDataFrame(anova(fit.1,fit.2),sheet[[2]],startColumn = 7,col.names = TRUE)
+saveWorkbook(wb,"cfa模型结果0.xlsx")
+
+addDataFrame(anova(fit.1,fit.3.1),sheet[[2]],startColumn = 7,
+             col.names = FALSE,startRow = 4)
+saveWorkbook(wb,"cfa模型结果0.xlsx")
+
+addDataFrame(anova(fit.1,fit.4.1),sheet[[2]],startColumn = 7,
+             col.names = FALSE,startRow = 6)
+saveWorkbook(wb,"cfa模型结果0.xlsx")
+
+addDataFrame(anova(fit.2,fit.3.1),sheet[[2]],startColumn = 7,
+             col.names = FALSE,startRow = 8)
+saveWorkbook(wb,"cfa模型结果0.xlsx")
+
+addDataFrame(anova(fit.2,fit.4.1),sheet[[2]],startColumn = 7,
+             col.names = FALSE,startRow = 10)
+saveWorkbook(wb,"cfa模型结果0.xlsx")
+
+addDataFrame(anova(fit.3.1,fit.4.1),sheet[[2]],startColumn = 7,
+             col.names = FALSE,startRow = 12)
+saveWorkbook(wb,"cfa模型结果0.xlsx")
+
+
+```
+
+
+

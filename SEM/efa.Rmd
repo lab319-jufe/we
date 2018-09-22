@@ -1,0 +1,85 @@
+---
+title: "efa"
+output: html_document
+---
+
+#导入数据
+```{r}
+dat<-read.csv(file="dat.csv",1)
+```
+
+
+#因子分析
+```{r}
+dat_efa<-dat[,c(-3,-5,-6,-11,-12,-14)]
+```
+
+```{r}
+library(psych)
+cortest.bartlett(dat_efa)
+KMO(dat_efa)
+```
+调用psych包，计算数据的bartlett球度和KMO统计量，这两个统计量可以判断数据是否适合因子分析
+    
+当你在决定提取公因子时，传统的方法一般是特征值大于1和看碎石图，但这些方法具有很大的局限性，特别是因子分析的项目数较多时。国外的心理学高级期刊大多数要求报告平行分析的结果，具体可参见《平行分析在探索性因素分析中的应用》一文
+    
+相关摘要：    
+做EFA的时候，只有用主成分法求解因子时，才能用特征根大于1这个准则，而用其他方法进行元素抽取时，不能根据特征值的大小来判断应保留的因子个数
+    
+平行分析，通过比较真实数据中的特征值碎石图和一组随机矩阵的平均特征值曲线，我们可以比较真实数据的特征值和与其对应的、从模拟数据中得到的平均特征值；因为特征值代表了因子所解释的变异的大小，所以如果一个真实数据中抽取的因子所解释的变异比模拟数据的还小，就没有保留价值，应当舍弃。
+
+```{r}
+fa.parallel(dat_efa)
+```
+    
+##1因子
+  
+fa函数可以提取数据的公因子，使用者可以根据调整参数进行探索，包括因子个数、因子提取方式、旋转方式等等
+    
+```{r}
+fa.varimax<-fa(dat_efa,nfactors = 1,rotate = "varimax",fm="pa")
+#varimax 正交旋转，方差最大法，#pa，主轴因子法
+fa.varimax
+```
+```{r}
+fa.diagram(fa.varimax,simple=TRUE)
+```
+
+##2因子
+```{r}
+fa.varimax<-fa(dat_efa,nfactors = 2,rotate = "varimax",fm="pa")#varimax 正交旋转，方差最大法
+fa.varimax
+```
+```{r}
+fa.diagram(fa.varimax,simple=TRUE)
+```
+
+
+##3因子
+```{r}
+fa.varimax<-fa(dat_efa,nfactors = 3,rotate = "varimax",fm="pa")#varimax 正交旋转，方差最大法
+fa.varimax
+```
+```{r}
+fa.diagram(fa.varimax,simple=TRUE)
+```
+
+##4因子
+```{r}
+fa.varimax<-fa(dat_efa,nfactors = 4,rotate = "varimax",fm="pa")#varimax 正交旋转，方差最大法
+fa.varimax
+```
+```{r}
+fa.diagram(fa.varimax,simple=TRUE)
+```
+
+##5因子
+```{r}
+fa.varimax<-fa(dat_efa,nfactors = 5,rotate = "varimax",fm="pa")#varimax 正交旋转，方差最大法
+fa.varimax
+```
+
+```{r}
+fa.diagram(fa.varimax,simple=TRUE)
+```
+
