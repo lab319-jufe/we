@@ -76,6 +76,12 @@ Hi funpeng! You've successfully authenticated, but GitHub does not provide shell
 + https://www.awaimai.com/2200.html
 + https://jingyan.baidu.com/article/ab69b2708d09382ca7189f9b.html
 + http://www.cnblogs.com/BeginMan/p/3548139.html
+
+
+
+## 多人合作的方式：
+https://blog.csdn.net/catshitone/article/details/45969775
+
   
 
 
