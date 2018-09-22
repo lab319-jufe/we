@@ -1,0 +1,361 @@
+#第三讲 经典分类
+
+##1 前言
+
+###1.1 Bayes、Fisher和距离判别法
+
+从贝叶斯公式出发，我们可以得到LDA线性判别分析（分布满足：均值不同，方差相同，高斯分布）、QDA二次判别分析（分布满足：均值不同，方差不同，高斯分布）
+
+Fisher判别法不足：不考虑各总体出现的概率大小，判别方法与错判后造成的损失无关，而这些恰好是贝叶斯的优点
+
+正态等协差阵条件下，Bayes判别法与距离判别法等价
+
+二分类且等协差条件下，Fisher判别法等价于距离判别法
+
+正态等协差阵条件下，Bayes，Fisher线性判别法和距离判别法三者等价
+
+Bayes要求知道总体分布类型（并不要求正态性），理论上可以说明Bayes判别在总体是非正态的情况下也适用，但是丧失正态性后，Bayes判别法具有的平均错判率最小的性质就不一定存在了
+
+Fisher判别法和距离判别法对总体分布没有要求，只要求各类总体的二阶矩存在
+
+当k个总体的均值向量共线性程度高时，Fisher判别法可以用较少的判别函数进行判别，这个时候，比Bayes简单
+
+###1.2 KNN跟线性回归的对比
+
+K最近邻(KNN)跟线性回归有一个对比（是非参方法与参数方法的对比）
+
+1.	选定的参数形式接近 f 的真实形式，参数方法更优
+
+2.	因为需要估计的系数较少，所以较容易拟合（优）
+
+3.	系数有简单的解释，可以容易地进行统计显著性检验（优）
+
+4.	假设太多，如果目标是预测的准确性，而所指定的函数与实际相差太远，参数方法的表现不佳（缺）
+
+5.	如果 x 和Y的真实关系是近仅线性的，那么线性回归就会比较好， 非线性的情况， KNN 可能会大大优于线性回归
+
+6.	KNN 的预测效果随着维数增大而恶化（样本量少的话，参数方法会优于非参数方法）
+
+###1.3 分类时不使用线性回归
+
+**两水平以上的**定性响应变量，哑变量的方法不能任意推广。这是因为不同种类的编码方式会产生完全不同的线性模型，导致测试观测产生不同的观测结果
+
+**两水平的**定性相应变量，用线性回归模型，原则上一定有一些预测变量值是没有意义的（预测的概率>1或<0的，如以下右图），而考虑使用logistic回归模型（如下左图）就可以避免这一问题
+
+![](C:\Users\yangy\Desktop\zl\aboutclassifier\aboutclassifier\4.2.png)
+
+###1.4 多分类不使用Logistic回归
+
+使用一个预测变量做Logistic回归时，如果其他预测变量与之有关系，那么模型可能会存在风险（只用一个预测变量得到的结果，可能与多个预测变量得到的结果完全不同——**混淆现象**）
+
+当分类数超过2时，一般使用线性判别分析方法
+
+这是因为当类别区分度高时，Logistic回归模型的参数估计不够稳定；$n$较小时，在每一类响应分类中预测变量近似服从正态分布时，线性判别分析模型比Logistic回归模型更稳定
+
+###1.5 本讲数据集介绍
+
+这一讲所使用的数据集**(Smarket数据集)**:2001年年初至2015年年末1250天S&P500股票指数的投资回报率，Lag1到Lag5表示过去五个交易日中的每个交易日的投资回报率，Volume表示前一日的股票成交量（十亿），Today表示当日的投资回报率，Direction表示这些数据在市场的走势方向（up：涨，down：跌）
+
+---
+
+##2 Logistic回归
+
+$P_r(Y=1|X)=p(X)   （1）$  
+
+$p(X)=\cfrac{e^{\beta_0+\beta_1X}}{1+e^{\beta_0+\beta_1X}}   （2）$
+
+$\cfrac{p(X)}{1-p(X)}=e^{\beta_0+\beta_1X}$
+
+$\log(\cfrac{p(X)}{1-p(X)})=\beta_0+\beta_1X$
+
+$\beta_0$和$\beta_1$可以由极大似然法估计得到，把所估计出来的参数和$X=x$代入$（2）$就可以知道$p(X)$的值，也就是$（1）$中$P_r(Y=1|X)$ 的值，即$Y$分到“1”类的概率，如果这个概率>0.5,则就将所要预测的响应变量分到“1”类，若概率<0.5,则将该响应变量分到“0”类
+
+```{r,echo=TRUE,warning=FALSE}
+library(ISLR)
+library(MASS)
+#划分训练样本和测试样本
+dat <- Smarket[, c("Year", "Lag1", "Lag2", "Direction")]
+train <- (dat$Year < 2005)#输出布尔值
+dattrain <- dat[train,] #以2001-2004年的数据为训练样本
+dattest <- dat[!train,] #2005年的数据为测试样本
+
+#Logistic回归建模
+glm.fit <- glm(Direction ~ Lag1+Lag2, family = binomial, data = dattrain)#训练集：2001-2004的数据
+
+#Logistic回归预测
+glm.probs <- predict(glm.fit, dattest, type = "response")#测试集：2005年的数据，得到2005年的走势预测
+glm.pred <- rep("Down", 252) #创建一个有1250个“DOWN”元素的向量
+glm.pred[glm.probs > 0.5] = "UP" #把向量中上涨概率大于0.5的变成“UP”
+
+tablogs<-table(glm.pred, dattest$Direction)
+tablogs
+sum(diag(prop.table(tablogs))) #计算正确分类率
+```
+
+
+---
+
+##3 线性判别分析
+
+线性判别分析
+
+![](http://images.cnblogs.com/cnblogs_com/jerrylead/201104/201104212324555025.jpg)
+$W=A^{'}X$
+
+
+###3.1 Bayes方法
+
+```{r,echo=TRUE,warning=FALSE}
+#数据划分
+dattrain1 <- dattrain[dattrain$Direction == "Up",]
+dattrain2 <- dattrain[dattrain$Direction == "Down",]
+dattrain1 <- as.matrix(dattrain1[, c("Lag1", "Lag2")])
+dattrain2 <- as.matrix(dattrain2[, c("Lag1", "Lag2")])
+```
+
+**准则：**
+
+1、后验概率最大
+
+2、错判损失最小，以下认为错判损失相同
+
+把$X=x$分到能使$\delta_{k}(x)=-\cfrac{1}{2}(x-\mu_k)^T\Sigma_k^{-1}(x-\mu_k)+\log\pi_k$最大的那一个“$k$”类(后验概率最大)
+
+```{r,echo=TRUE,warning=FALSE}
+#计算两类样本均值(列均值)
+dattrain1_mean <- apply(dattrain1, 2, mean)
+dattrain2_mean <- apply(dattrain2, 2, mean)
+pred <- rep("Down", nrow(as.matrix(dattest)))
+post <- rep(0, nrow(as.matrix(dattest)))
+p1 <- log(nrow(dattrain1) / nrow(dattrain))
+p2 <- log(nrow(dattrain2) / nrow(dattrain))
+for (i in 1:nrow(as.matrix(dattest))) {
+    delta1 <- -1 / 2 * (as.matrix(dattest[, c("Lag1", "Lag2")])[i,] - dattrain1_mean) %*% solve(cov(dattrain1)) %*% (as.matrix(dattest[, c("Lag1", "Lag2")])[i,] - dattrain1_mean) + p1
+    delta2 <- -1 / 2 * (as.matrix(dattest[, c("Lag1", "Lag2")])[i,] - dattrain2_mean) %*% solve(cov(dattrain2)) %*% (as.matrix(dattest[, c("Lag1", "Lag2")])[i,] - dattrain2_mean) + p2
+
+    if (delta1 > delta2) {
+        pred[i] = "Up"
+        post[i] = exp(delta1) / (exp(delta1) + exp(delta2))
+    } else {
+        pred[i] = "Down"
+        post[i] = exp(delta2) / (exp(delta1) + exp(delta2))
+    }
+}
+Bayesresults <- cbind(dattest, as.data.frame(pred), post)
+Bayesresults[1:10,]
+
+sum(Bayesresults$Direction == Bayesresults$pred) / nrow(dattest) #计算正确分类率
+```
+
+###3.2 LDA分类器
+
+分类器会将$X=x$分到使$δ_k (x)=x·μ_k/σ^2 -(μ_k^2)/(2σ^2 )+logπ_k$最大的那一个“$k$”类
+
+```{r,echo=TRUE,warning=FALSE}
+#前提假设： 每一类中的观测都来自于一个均值不同，方差相同的正态分布假设上
+#用LDA建模
+lda.fit <- lda(Direction ~ Lag1 + Lag2, data = dattrain)
+lda.fit
+#用LDA预测
+lda.pred <- predict(lda.fit, dattest)
+tablda <- table(dattest$Direction, lda.pred$class)
+tablda
+sum(diag(prop.table(tablda))) #计算正确分类率
+cbind(dattest, lda.pred$class)[1:10,]#输出原数据的类别和训练后的类别
+round(lda.pred$posterior, 3)[1:10,] #输出前十个后验概率，保留三位小数
+```
+
+###3.3 QDA分类器
+
+分类器会将$X=x$分到使$δ_k (x)=x^T Σ^(-1) μ_k-1/2 μ_k^T Σ^(-1) μ_k+logπ_k$最大的那一个“$k$”类
+
+```{r,echo=TRUE,warning=FALSE}
+#前提假设： 每一类的观测都服从一个均值不同协方差矩阵相同的多元高斯分布
+#用QDA建模
+qda.fit <- qda(Direction ~ Lag1 + Lag2, data = dattrain)
+qda.fit
+#用QDA预测
+qda.pred <- predict(qda.fit, dattest)
+tabqda <- table(dattest$Direction, qda.pred$class)
+tabqda
+sum(diag(prop.table(tabqda))) #计算正确分类率
+cbind(dattest, qda.pred$class)[1:10,] #输出原数据的类别和训练后的类别
+round(qda.pred$post, 3)[1:10,]#输出前十个后验概率，保留三位小数
+#比较LDA和QDA
+sum(diag(prop.table(tabqda))) > sum(diag(prop.table(tablda)))
+```
+
+**结果解读：**QDA模型的正确分类率大于LDA模型，说明这组数据QDA的分类效果比LDA的分类效果好
+
+###3.4 距离判别法公式分类
+
+计算各类重心即各组的均值，某次观测分到i类，如果它离第i类的重心距离最近（这里的距离可以用欧氏距离，但是马氏距离用的多）
+
+距离计算：$D(X,G_i)=(X-\mu_{i}^{'})(\Sigma_{i}^{-1})(X-\mu_i),i=1,2$其中，$\mu_1,\mu2,\Sigma_1,\Sigma_2$分别是总体$G_1,G_2$的均值向量和协方差矩阵
+
+二分类（两总体）当$\Sigma_1=\Sigma_2=\Sigma$时（多分类也是类似的做法）
+
+距离比较：$W(X)=D(X,G_2)-D(X,G_1)=2[X-\cfrac{1}{2}(\mu_{1}+\mu_{2})]^{'}\Sigma^{-1}(\mu_1-\mu_2)$
+
+判别标准：
+
+（1）$W(X)>0,X\in G_1$
+
+（2）$W(X)<0,X\in G_2$
+
+（3）$W(X)=0,待判$
+
+```{r,echo=TRUE,warning=FALSE}
+#计算两类样本均值(列均值)
+dattrain1_mean <- apply(dattrain1, 2, mean)
+dattrain2_mean <- apply(dattrain2, 2, mean)
+#计算协方差矩阵
+sigma <- (cov(dattrain1) * nrow(dattrain1) + cov(dattrain2) * nrow(dattrain2)) / (nrow(dattrain1) + nrow(dattrain2) - 2)
+solve(sigma) #求逆矩阵
+a <- solve(sigma) %*% (dattrain1_mean - dattrain2_mean) #%*%表示矩阵的乘法,Sigma的逆*（mu_1-mu_2）
+
+b = 1 / 2 * (dattrain1_mean + dattrain2_mean)#两个分类的的均值向量的均值
+#判断测试集里的属于哪一类
+pred <- rep("Down", nrow(as.matrix(dattest)))##全都是"Down"
+for (i in 1:nrow(as.matrix(dattest))) {
+    W = t(a) %*% t(as.matrix((dattest[, c("Lag1", "Lag2")] - b)))[, i]
+
+    if (W > 0) {
+        pred[i] = "Up"
+    } else {
+        pred[i] = "Down"
+    }
+}
+Distanceresults <- cbind(dattest, as.data.frame(pred))
+Distanceresults[1:10,]
+
+sum(Distanceresults$Direction == Distanceresults$pred) / nrow(dattest) #计算正确分类率
+```
+
+###3.5 Fisher判别法公式分类
+
+(假设是p个因子，二分类)
+
+类之间的变异$(\overline{Y}_1-\overline{Y}_2)$尽可能大，类内部的变异$S_{P}^{2}=\cfrac{(n_{1}-1)S_{1}^{2}+(n_{2}-1)S_{2}^{2}}{n_{1}+n_{2}-2}$尽可能小,也就是 $\lambda=\cfrac{(\overline{Y}_1-\overline{Y}_2)^{2}}{S_{P}^{2}}$越大越好,其中$\overline{Y}_1=A^{'}\overline{X}_{1},\overline{Y}_2=A^{'}\overline{X}_{2}$。$——\rightarrow$得到适当的X的线性组合A，得到判别函数$Y=A^{'}X=a_1x_1+a_2x_2+\dots+a_px_p$
+
+参考相关文献：$A=\begin{pmatrix}a_{1}\\a_{2}\\\dots\\a_{p}\end{pmatrix}=\begin{bmatrix}S_{11}&&S_{12}&&\dots&&S_{1p}\\
+                           S_{21}&&S_{22}&&\dots&&S_{2p}\\
+                           \dotsi\\
+                           S_{p1}&&S_{p2}&&\dots&&S_{pp}\end{bmatrix}^{-1}\begin{pmatrix}\overline{X}_{11}-\overline{X}_{21}\\\overline{X}_{12}-\overline{X}_{22}\\\dots\\\overline{X}_{1p}-\overline{X}_{2p}\end{pmatrix}$
+
+判别的界值：$y_{0}=\cfrac{n_1\overline{Y}_1+n_2\overline{Y}_2}{n_1+n_2}$
+
+判别标准：
+
+（1）$\overline{Y}_1<\overline{Y}_2$时，$Y<y_{0}$，则$X \in G_1$,否则$X \in G_2$
+
+（2）$\overline{Y}_1>\overline{Y}_2$时，$Y<y_{0}$，则$X \in G_2$,否则$X \in G_1$
+
+（3）$\overline{Y}_1=\overline{Y}_2$时，待判
+
+```{r,echo=TRUE,warning=FALSE}
+c <- 1 / (nrow(dattrain1) + nrow(dattrain2) - 2) * a #%*%表示矩阵的乘法
+y0 <- (dattrain1_mean %*% c * nrow(dattrain1) + dattrain2_mean %*% c * nrow(dattrain2)) / nrow(dattrain)
+pred <- rep("Down", nrow(as.matrix(dattest)))
+for (i in 1:nrow(as.matrix(dattest))) {
+    y = t(c) %*% t(as.matrix(dattest[, c("Lag1", "Lag2")]))[, i]
+    if (y > y0) {
+        pred[i] = "Up"
+    } else {
+        pred[i] = "Down"
+    }
+}
+Fisherresults <- cbind(dattest, as.data.frame(pred))
+Fisherresults[1:10,]
+
+sum(Fisherresults$Direction == Fisherresults$pred) / nrow(dattest) #计算正确分类率
+```
+**结果解读：**在这个数据下，用Fisher和距离判别法公式实际得到的结果是一样的
+
+---
+
+##4 KNN分类器
+
+**KNN决策过程**
+
+![](C:\Users\yangy\Desktop\zl\aboutclassifier\aboutclassifier\bf096b63f6246b60f20ccd5aebf81a4c510fa29a.png)
+
+$K=3$时，离绿色的点最近的3个点为2个红色点，1个蓝色点，因此把绿点分到红色类
+
+$K=5$时，离绿色的点最近的5个点为2个红色点，3个蓝色点，因此把绿点分到蓝色类
+
+
+```{r,echo=TRUE,warning=FALSE}
+library(class)
+#knn()函数要求参数是矩阵形式  
+train.X <-as.matrix(dattrain[,c(2,3)])#训练集自变量的矩阵
+test.X <-as.matrix(dattest[,c("Lag1","Lag2")])#测试集自变量的矩阵
+train.Direction <-as.matrix(dattrain[,"Direction"])#测试集因变量的矩阵
+
+set.seed(1)#设置随机种子是为了结果具有可重复性
+#K=1
+knn.predK1 <-knn(train.X, test.X, train.Direction, k = 1)
+tabK1<-table(knn.predK1, dattest[,"Direction"])
+tabK1
+sum(diag(prop.table(tabK1))) #计算正确分类率
+#K=3
+knn.predK3 <- knn(train.X, test.X, train.Direction, k = 3)
+tabK3<-table(knn.predK3, dattest[,"Direction"])
+tabK3
+sum(diag(prop.table(tabK3))) #计算正确分类率
+#K=9
+knn.predK9 = knn(train.X, test.X, train.Direction, k = 9)
+tabK9<-table(knn.predK9, dattest[,"Direction"])
+tabK9
+sum(diag(prop.table(tabK9))) #计算正确分类率
+```
+
+---
+
+##5 ROC曲线(不会画)
+
+
+![](C:\Users\yangy\Desktop\zl\aboutclassifier\aboutclassifier\1521285616.png)
+
+---
+
+##6 分类方法比较
+```{r,echo=TRUE,warning=FALSE}
+#results表示相对应分类方法的正确区分率
+methods<-c("Logistic回归","Bayes方法","LDA分类器","QDA分类器","距离判别法公式分类","Fisher判别法公式分类","KNN(K=1)","KNN(K=3)","KNN(K=9)")
+results<-c(sum(diag(prop.table(tablogs))),sum(Bayesresults$Direction == Bayesresults$pred) / nrow(dattest),sum(diag(prop.table(tablda))),sum(diag(prop.table(tabqda))),sum(Distanceresults$Direction == Distanceresults$pred) / nrow(dattest),sum(Fisherresults$Direction == Fisherresults$pred) / nrow(dattest),sum(diag(prop.table(tabK1))),sum(diag(prop.table(tabK3))),sum(diag(prop.table(tabK9))))
+comparement<-data.frame(methods,results)
+comparement
+```
+
+**结果解读：**上述结果表示在这组数据的情况下，QDA分类器的分类效果是相对最好的，KNN的K取值从1->3,分类效果有所提升，但从3->9，分类结果反而变差，说明随着K的继续增加，结果不会再有更进一步的改进
+
+###6.1 LDA与QDA的比较
+
+观测训练数据量相对较**小**，则LDA优于QDA，反之，QDA优于LDA.因为当数据量**大**时，K类协方差矩阵相同的假设就很容易站不住脚
+
+LDA是关于X的一次函数，QDA是关于X的二次函数。QDA的光滑性更高，即拥有高方差，低偏差。而LDA的光滑性不如QDA，也即拥有更低的方差，且具有改善预测效果的潜力
+
+在具体数据中，QDA与LDA哪个分类器较好，可以在同一个ROC曲线中绘制QDA,LDA，Bayes三个分类器的曲线进行判断
+
+###6.2 LDA与Logistic、KNN的比较
+
+LDA与Logistic两者都是关于x的线性函数，意味着都产生线性决策边界，而KNN是彻底的非参数方法，对决策边界的形状没有任何假设（也即没有明确的分界线）
+
+当高斯分布的假设近似成立时，LDA比Logistic好，当该假设不成立时，Logistic模型更好
+
+当决策边界高度非线性时，KNN优于LDA与Logistic
+
+KNN的**缺点**在于：（1）必须小心选择光滑水平（2）由于不需要确定、给出参数，因此没有办法确定哪些变量是重要的
+
+###6.3 总结
+
+光滑度（从低到高）：
+
+1、LDA与Logistic  2、QDA  3、KNN
+
+QDA的光滑度不如KNN但优于LDA与Logistic，对决策边界的形状做了一些假设，且不是线性的。因此QDA的在实际中的应用更广泛一些
+
+如果对于同一观测，LDA与Logistic很好，且Logistic优于LDA,而QDA很差，考虑该观测可能是非正态分布（可能是t分布）
+
+---
