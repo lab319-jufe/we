@@ -9,6 +9,7 @@ output:
 ---
 
 #弹性网络（ Elastic Net）
+
   ElasticNet 是一种使用L1和L2先验作为正则化矩阵的线性回归模型.这种组合用于只有很少的权重非零的稀疏模型，比如:class:Lasso, 但是又能保持:class:Ridge 的正则化属性.我们可以使用 l1_ratio 参数来调节L1和L2的凸组合(一类特殊的线性组合)。其中，Lasso用L1惩罚去做变量的选择和降维，而岭回归用L2判罚去压缩系数进而得到更加稳定的预测。
   弹性网络公式：
   $$\underset{\beta_0,\beta\in R^{p+1}}{min\,} {\left[\frac{1}{2N}\sum_{i=1}^{N}(y_i-\beta_0-x_i^T\beta)^2+\lambda P_\alpha(\beta)\right]}$$
