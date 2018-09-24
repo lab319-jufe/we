@@ -1,0 +1,265 @@
+---
+title: "正则化"
+output: html_document
+---
+
+创建人：潘露璐  2018年3月31日
+
+#正则化
+正则化(regularization)，是指在线性代数理论中，不适定问题通常是由一组线性代数方程定义的，而且这组方程组通常来源于有着很大的条件数的不适定反问题。大条件数意味着舍入误差或其它误差会严重地影响问题的结果。
+1. 正则化的目的：防止过拟合！
+
+2. 正则化的本质：约束（限制）要优化的参数。
+![Markdown](http://i2.tiimg.com/611786/bfb7acc8566946b1.png)
+
+从左为欠拟合（高偏差），右边为过拟合（高方差）
+处理方式有两种：1.尽量减少选取变量的数目。
+                  2.正则化：正则化中我们将保留所有的特征变量，但是会减小特征变量的数量级（参数数值的大小θ(j)）。当我们有很多特征变量时，其中每一个变量都能对预测产生一点影响。正如我们在房价预测的例子中看到的那样，我们可以有很多特征变量，其中每一个变量都是有用的，因此我们不希望把它们删掉，这就导致了正则化概念的发生。
+
+![Markdown](http://i2.tiimg.com/611786/7e2dbe8176ff7b2f.png)
+
+![](C:/Users/Administrator/Desktop/新建文件夹/R的基础操作/21.jpg)
+
+要能保证该回归系数有解，必须确保X’X矩阵是满秩的，即X’X可逆，但在实际的数据当中，自变量之间可能存在高度自相关性，就会导致偏回归系数无解或结果无效。为了能够克服这个问题，可以根据业务知识，将那些高自相关的变量进行删除；或者选用岭回归也能够避免X’X的不可逆。
+
+#岭回归 
+  岭回归一般可以用来解决线性回归模型系数无解的两种情况，一方面是自变量间存在高度多重共线性，另一方面则是自变量个数大于等于观测个数，不管是高度多重共线性的矩阵还是列数多于观测数的矩阵，最终算出来的行列式都等于0或者是近似为0。970年Heer提出了岭回归方法，非常巧妙的化解了这个死胡同，即在X’X的基础上加上一个较小的lambda扰动 ，从而使得行列式不再为0。
+![Markdown](http://i2.tiimg.com/611786/1a1a64d46b8c5b31.png)
+
+不难发现，回归系数beta的值将随着lambda的变化而变化，当lambda=0时，其就退化为线性回归模型的系数值。
+实际上，岭回归系数的解的解依赖于最优化问题：
+![Markdown](http://i2.tiimg.com/611786/1c1bb99761fd5d06.png)
+
+其中最后一项被称为被称为目标函数的惩罚函数，是一个L2范数（(Ridge Regression)）
+（即欧氏距离：$||x||_1= \sqrt(\sum_{i=1}^{n}|x_i|)$），它可以确保岭回归系数beta值不会变的很大，起到收缩的作用，这个收缩力度就可以通过lambda来平衡
+![](C:/Users/Administrator/Desktop/新建文件夹/4.jpg)
+
+（这幅图的横坐标是模型的复杂度，纵坐标是模型的预测误差，绿色曲线代表的是模型在训练集上的效果，蓝色曲线代表的是模型在测试集的效果。）
+对于岭回归来说，随着lambda的增大，模型方差会减小（因为矩阵X’X行列式在增大，其逆就是减小，从而使得岭回归系数在减小）而偏差会增大。故通过lambda来平衡模型的方差和偏差，最终得到比较理想的岭回归系数。
+综合来说：
+![Markdown](http://i2.tiimg.com/611786/32c1c51fb8633a00.png)
+
+岭回归模型可以解决多重共线性的麻烦，正是因为多重共线性的原因，才需要添加这个约束。例如影响一个家庭可支配收入(y)的因素有收入(x1)和支出(x2)，可以根据自变量和因变量的关系构造线性模型:
+![Markdown](http://i2.tiimg.com/611786/209140d649695947.png)
+
+假如收入(x1)和支出(x2)之间存在高度多重共线性，则两个变量的回归系数之间定会存在相互抵消的作用。即把beta1调整为很大的正数，把beta2调整为很小的负数时，预测出来的y将不会有较大的变化。所以为了压缩beta1和beta2的范围，就需要一个平方和的约束。 将上述等价目标函数展示到几核图形： 
+![Markdown](http://i2.tiimg.com/611786/dc739844fe20a728.png)
+![Markdown](http://i1.fuimg.com/611786/f948bff6d7179b64.png)
+我们知道岭回归系数会随着lambda的变化而变化，为保证选择出最佳的岭回归系数，该如何确定这个lambda值呢？一般我们会选择定性的可视化方法和定量的统计方法。对这种方法作如下说明：
+
+1）绘制不同lambda值与对应的beta值之间的折线图，寻找那个使岭回归系数趋于稳定的lambda值；同时与OLS相比，得到的回归系数更符合实际意义；
+
+2）方差膨胀因子法，通过选择最佳的lambda值，使得所有方差膨胀因子不超过10；
+
+3）虽然lambda的增大，会导致残差平方和的增加，需要选择一个lambda值，使得残差平方和趋于稳定（即增加幅度细微）。
+
+
+#LASSO回归(Lasso Regression)
+其实该回归与岭回归非常类似，不同的是求解回归系数的目标函数中使用的惩罚函数是L1范数，L1范数表示向量中每个元素绝对值的和$||x||_1=\sum_{i=1}^n|x_i|$
+![Markdown](http://i2.tiimg.com/611786/92040a2e5d3d6610.png)
+![Markdown](http://i2.tiimg.com/611786/313496d833c353dd.png)
+![Markdown](http://i1.fuimg.com/611786/3d64261176604b82.png)
+
+#弹性网络（ Elastic Net）
+  ElasticNet 是一种使用L1和L2先验作为正则化矩阵的线性回归模型.这种组合用于只有很少的权重非零的稀疏模型，比如:class:Lasso, 但是又能保持:class:Ridge 的正则化属性.我们可以使用 l1_ratio 参数来调节L1和L2的凸组合(一类特殊的线性组合)。其中，Lasso用L1惩罚去做变量的选择和降维，而岭回归用L2判罚去压缩系数进而得到更加稳定的预测。
+  弹性网络公式：
+  $$\underset{\beta_0,\beta\in R^{p+1}}{min\,} {\left[\frac{1}{2N}\sum_{i=1}^{N}(y_i-\beta_0-x_i^T\beta)^2+\lambda P_\alpha(\beta)\right]}$$
+$$P_\alpha(\beta)=(1-\alpha)\frac{1}{2}||\beta||_h^2+\alpha||\beta||_h$$
+lambda是复杂参数，控制着压缩的程度（0表示没有判罚，无穷表示完全判罚），alpha控制着结果中有多大程度是岭回归和Lasso，如果alpha等于0则是完全岭回归，等于1是完全lasso 
+  
+```{r}
+require(glmnet)#需要预测变量的设计矩阵（包含截距项）和反应变量的数值矩阵
+acs<-read.table("http://jaredlander.com/data/acs_ny.csv",sep=",",header=T,stringsAsFactors = F)
+```
+```{r}
+#在R语言中对包括分类变量(factor)的数据建模时，一般会将其自动处理为虚拟变量或哑变量(dummy variable)为了方便构造数值矩阵,用model.matrix函数，就会输出设计矩阵
+testframe<-data.frame(First=sample(1:10,20,replace = T),Second=sample(1:20,20,replace=T),Third=sample(1:10,20,replace = T),Forth=factor(rep(c("Alice","Bob","Charlie","David"),5)),Fifth=ordered(rep(c("Edward","Frank","Georgia","Hank","Isaac"),4)),Sixth=rep(c("a","b"),10),stringsAsFactors = F)
+head(testframe)
+```
+
+#model.matrix(object, data = environment(object),contrasts.arg = NULL, xlev = NULL, ...)
+Fuel ~ Weight + Displacement
+Fuel = α + β1Weight + β2Displacement + ε
+y~x
+y~1+x
+二者都反映了y对x的简单线性模型。第一个公式包含了一个隐式的截距项，而第二个则是一个显式的截距项。
+y~0+x、y~-1+x、y~x-1                y对x过原点的简单线性模型(也就是说，没有截距项)。
+```{r}
+head(model.matrix(First~Second+Forth+Fifth,testframe))
+#Forth被转化成指标性变量，其列数比Forth水平书少1，Fifth也同理，但是其值不是0,1，因为Fifth是有顺序的因子其一个水平比另一个水平大或者小
+```
+#大部分线性模型中为了避免共线性，基准水平往往部构造示性变量，但是这对于弹性网格所需要的设计阵来说是不希望的，为了同样通过model.matrix来构造因子所有水平的示性变量所组成的设计矩阵，需要用build.x整合一种解
+```{r}
+require(useful)
+#运用所有水平always use all levels
+head(build.x(First~Second+Forth+Fifth,testframe,contrasts = F))
+```
+```{r}
+#build.x(formula, data, contrasts = TRUE, sparse = FALSE)
+head(build.x(First~Second+Forth+Fifth,testframe,contrasts = c(Forth=F,Fifth=T)))#just use all level for Forth
+#(Logical indicating whether a factor's base level is removed. Can be either one single value applied to every factor or a value for each factor. Values will be recycled if necessary.)
+```
+
+在acs上恰当地使用build.x函数可以构造用于glmet的一个很漂亮的设计矩阵。
+```{r}
+acs$Income<-with(acs,FamilyIncome>=1500)#with函数可以对指定的一个数据框的列进行操作，并且不需要每次都指明数据框的名称。
+head(acs)
+```
+```{r}
+#建立一个预测矩阵（predictor matrix）
+acsX<-build.x(Income~NumBedrooms+NumChildren+NumPeople+NumRooms+NumUnits+NumVehicles+NumWorkers+OwnRent+YearBuilt+ElectricBill+FoodStamp+HeatingFuel+Insurance+Language-1,data=acs,contrasts = F)#没有截距项
+class(acsX)
+dim(acsX)
+head(acsX)
+topleft(acsX,c=6)
+topright(acsX,c=6)
+```
+```{r}
+#建立一个响应矩阵
+acsY<-build.y(Income~NumBedrooms+NumChildren+NumPeople+NumRooms+NumUnits+NumVehicles+NumWorkers+OwnRent+YearBuilt+ElectricBill+FoodStamp+HeatingFuel+Insurance+Language-1,data=acs)
+head(acsY)
+tail(acsY)
+```
+接下来运行glmnet，它默认的在100个不同的lambda值上进行路径拟合，最优路径的选择依赖于使用者，glmnet包中有一个函数cv.glmnet可以自动的计算交叉验证的值，默认alpha等于1，以为着仅使用lasso去计算。选择最优的alpha则需要另一层交叉验证
+```{r}
+source("http://bioconductor.org/biocLite.R")
+ biocLite("glmnet")#安装glmnet包
+require(glmnet)
+set.seed(1863561)
+acsCV1<-cv.glmnet(x=acsX,y=acsY,family="binomial",nfolds = 5)
+```
+
+cv.glmnet函数返回的最有用的信息就是交叉验证和使交叉验证误差达到最小的lambda值。此时还返回使得交叉验证误差在一个标准误差范围之内的最大的lambda值
+```{r}
+acsCV1$lambda.min
+acsCV1$lambda.1se
+```
+
+```{r}
+plot(acsCV1)#不同lambda值对应的交叉验证误差误差。图形顶端的数字代表的是在给定的loglambda值下模型中的变量数
+```
+```{r}
+coef(acsCV1,s="lambda.1se")#coef提取估计的系数，但是需要先给定lambda的水平，不然所有的路径都会输出
+#结果发现，一个因子的一部分水平被选上了，而其他部分没有被选上，因为lasso排除了这些彼此相关的变量，同时这里没有标准误差，因此也没有系数的置信区间，
+```
+
+```{r}
+plot(acsCV1$glmnet.fit,xvar = "lambda")
+abline(v=log(c(acsCV1$lambda.min,acsCV1$lambda.1se)),lty=2)#沿着lambda的路径，变量何时进入模型
+```
+
+```{r}
+set.seed(71624)
+acsCV2<-cv.glmnet(x=acsX,y=acsY,family="binomial",nfolds = 5,alpha=0)#岭回归
+```
+
+```{r}
+acsCV2$lambda.min
+acsCV2$lambda.1se
+```
+
+```{r}
+coef(acsCV2,s="lambda.1se")
+```
+
+```{r}
+plot(acsCV2)
+```
+```{r}
+plot(acsCV2$glmnet.fit,xvar = "lambda")#系数
+abline(v=log(c(acsCV2$lambda.min,acsCV2$lambda.1se)),lty=2)
+```
+
+寻找最优的alpha值需要另一个交叉验证，需要对不同的alpha值分别进行cv.glmnet函数，为了简便操作，直接运用parallel包、doPallel包和foreach包
+```{r}
+library(parallel)
+library(doParallel)
+library(foreach)
+
+```
+
+```{r}
+set.seed(283673)
+theFolds<-sample(rep(1:5,length.out=nrow(acsX)))#个数
+alphas<-seq(from=0.5,to=1,by=0.05)
+```
+
+
+```{r}
+set.seed(5127151)
+cl<-makeCluster(2)#开始并注册一个簇
+registerDoParallel(cl)#注册
+before<-Sys.time()#开始的系统时间
+acsDouble<-foreach(i=1:length(alpha),.errorhandling = "remove",.inorder = F,.multicombine = T,.export = c("acsX","acsY","alphas","theFolds"),.packages = "glmnet")%dopar%  #.errorhandling = "remove"表示如果有错误发生则跳出循环，.packages = "glmnet"表示每个“工人”进行再加载，同样
+{
+  print(alpha[i])
+  cv.glmnet(x=acsX,y=acsY,family="binomial",nfolds = 5,foldid = theFolds,alpha=alphas[i])
+}
+after<-Sys.time()
+stopCluster(cl)#结束
+after-before
+```
+```{r}
+sapply(acsDouble,class)#检查里表中每个元素的类别
+```
+
+```{r}
+extractGlmnetInfo<-function(object)
+{
+  #寻找lambda并赋值
+  lambdaMin<-object$lambda.min
+  lambda1se<-object$lambda.1se
+  #找出上述lambda所在位置
+  whichMin<-which(object$lambda==lambdaMin)
+  which1se<-which(object$lambda==lambda1se)
+  #建立数据框
+  data.frame(lambda.min=lambdaMin,error.min=object$cvm[whichMin],lambda.1se=lambda1se,error.1se=object$cvm[which1se])
+}
+#将自定义函数运用到每个因子中
+alphaInfo<-Reduce(rbind,lapply(acsDouble,extractGlmnetInfo))
+alphaInfo2<-plyr::ldply(acsDouble,extractGlmnetInfo)
+identical(alphaInfo,alphaInfo2)
+```
+```{r}
+alphaInfo$Alpha<-alphas
+alphaInfo
+```
+
+```{r}
+require(reshape)
+require(stringr)
+alphaMelt<-melt(alphaInfo,id.vars="Alpha",value.name="Value",variable.names="Measure")
+alphaMelt$Type<-str_extract(string = alphaMelt$Measure,pattern = "(min)|(1se)")
+alphaMelt$Measure<-str_replace(string = alphaMelt$Measure,pattern = "\\.(min|1se)",replacement = "")
+alphaCast<-dcast(alphaMelt,Alpha+Type~Measure,value.var="Value")
+ggplot(alphaCast,aes(x=Alpha,y=error))+geom_line(aes(group=Type))+face_wrap(~Type,scales="free_y",ncol=1)+geom_point(aes(size=lambda))
+```
+
+```{r}
+require(reshape)
+require(stringr)
+require(reshape2)
+require(ggplot2)
+alphaMelt<-melt(alphaInfo,id.vars="Alpha",value.name="Value",variable.names="Measure")
+alphaMelt$Type<-str_extract(string = alphaMelt$variable,pattern = "(min)|(1se)")
+alphaMelt$variable<-str_replace(string = alphaMelt$variable,pattern = "\\.(min|1se)",replacement = "")
+alphaCast<-dcast(alphaMelt,Alpha+Type~variable,value.var="value")
+ggplot(alphaCast,aes(x=Alpha,y=error))+geom_line(aes(group=Type))+facet_wrap(~Type,scales="free_y",ncol=1)+geom_point(aes(size=lambda))
+```
+
+```{r}
+set.seed(5127151)
+acsCV3<-cv.glmnet(x=acsX,y=acsY,family="binomial",nfolds = 5,alpha=alphaInfo$Alpha[which.min(alphaInfo$error.1se)])
+```
+
+```{r}
+plot(acsCV3)
+plot(acsCV3$glmnet.fit,xvar="lambda")
+abline(v=log(c(acsCV3$lambda.min,acsCV3$lambda.1se)),lty=2)
+```
+```{r}
+thecoef<-as.matrix(coef(acsCV3,s="lambda.1se"))
+coefdf<-data.frame(Value=thecoef,Cofficient=rownames(thecoef))
+coefdf<-coefdf
+```
+
