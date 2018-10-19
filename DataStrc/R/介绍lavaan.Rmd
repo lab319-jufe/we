@@ -1,0 +1,239 @@
+---
+title: "R lavaan包的介绍"
+output: html_notebook
+
+---
+help lavaan:http://lavaan.ugent.be/start.html 
+介绍内容是基于此https://www.cnblogs.com/squidGuang/p/9054301.html链接的学习。文档原作者为比利时Ghent大学的Yves Rosseel博士，lavaan亦为其开发。
+
+2018.10 组会 黄子芮 
+
+一：
+首先介绍lavaan的基本组成部分：模型语法，拟合方程(CFA, SEM和growth)，用来呈现结果的主要函数(summary, coef, fitted, inspect)； 然后提供两个实例； 最后再讨论一些重要一：话题：均值结构模型(meanstructures)，多组模型(multiple groups)，增长曲线模型(growth curve models)，中介分析(mediation analysis)，分类数据(categorial data)等。
+
+1.在lavaan中，一个典型模型是一个回归方程组，其中可以包含潜变量，例如：
+y ~ f1 + f2 + x1 + x2
+f1 ~ f2 + f3
+f2 ~ f3 + x1 + x2
+
+2. 我们必须通过指示符=~(measuredby)来“定义”潜变量。例如，通过以下方式来定义潜变量f1, f2和f3:
+f1 =~ y1 + y2 + y3
+f2 =~ y4 + y5 + y6
+f3 =~ y7 + y8 + y9 + y10
+
+3.R环境下的回归方程有如下形式：
+y ~ x1 + x2 + x3 + x4  # ~左边为因变量y
+
+4.方差和协方差表示如下：
+y1 ~~ y1 # 方差
+y1 ~~ y2 # 协方差
+f1 ~~ f2 # 协方差
+```{r}
+library(lavaan)
+??HolzingerSwineford
+```
+例子1
+
+此数据集包含了来自两个学校的七、八年级孩子的智力能力测验分数。在我们的版本里，只包含原有26个测试中的9个，这9个测试分数作为9个测量变量分别对应3个潜变量：
+
+视觉因子(visual)对应x1，x2，x3
+文本因子(textual)对应x4，x5，x6
+速度因子(speed)对应x7，x8，x9
+```{r}
+lavaandata <- HolzingerSwineford1939
+HS.model <- ' visual  =~ x1 + x2 + x3
+              textual =~ x4 + x5 + x6
+              speed   =~ x7 + x8 + x9'
+# 然后拟合cfa函数，第一个参数是模型，第二个参数是数据集
+fit <- cfa(HS.model, data = HolzingerSwineford1939)
+# 再通过summary函数给出结果
+summary(fit, fit.measure = TRUE)#参数fit.measure = TRUE会显示下面从model test baseline model到SRMR的部分
+```
+结果# 前6行为头部，包含版本号，收敛情况，迭代次数，观测数，用来计算参数的估计量，模型检验统计量，自由度和相关的p值
+
+例子2 
+
+```{r}
+PoliticalDemocracy
+sem_model <- '# measurement model 测量模型
+          ind60 =~ x1 + x2 + x3
+          dem60 =~ y1 + y2 + y3 + y4
+          dem65 =~ y5 + y6 + y7 + y8
+          
+          # regressions 回归
+          dem60 ~ ind60
+          dem65 ~ ind60 + dem60
+          
+          # residual correlations 残余相关
+          y1 ~~ y5
+          y2 ~~ y4 + y6
+          y3 ~~ y7
+          y4 ~~ y8
+          y6 ~~ y8'
+
+# 拟合SEM
+fit <- sem(sem_model, data = PoliticalDemocracy)
+
+# 提取结果
+summary(fit, standardized = TRUE)  
+#可以看出sem()和cfa()这两个函数很相似，实际上，这两个函数现在几乎是一样的，但在将来可能发生变化。在添加了standardized参数后，出现了Std.lv， Std.all两列，前者只有潜变量被标准化了，后者为所有变量都标准化了，也被称为“完全标准化解”。
+
+#与上例不同，这里我们忽略了参数fit.measure = TRUE，用standardized = TRUE来标准化参数值）
+```
+
+
+二、 更多关于语法的内容
+固定参数
+对于一个对应4个指标的潜变量，lavaan默认将第一个指标的因子载荷固定为1，其他指标为自由。
+
+但如果你有一个很好的理由来让所有因子载荷都固定为1，可以照如下做法：
+
+f =~ y1 + 1*y2 + 1*y3 + 1*y4
+一般来说，你需要通过给相关变量预先乘以一个数字来固定公式的参数，这个叫做“预乘机制”。
+
+回想例1中的模型，默认3个潜变量两两相关。如果你想将某对变量的相关系数设为0，你需要为其添加一个协方差公式并将参数设为0.
+
+在下面的语法中，除visual，textual间的协方差自由外，其他均设为0。并且我们希望固定speed的因子为一个单位，所以不需要设定第一个指标x7为1，因此我们给x7乘以NA使x7的因子载荷自由且未知，整个模型如下：
+
+初值
+lavaan包默认为自由参数自动生成初值，你也可以通过start()函数来自己设定初值，示例如下：
+visual  =~ x1 + start(0.8)*x2 + start(1.2)*x3
+textual =~ x4 + start(0.5)x5 + start(1.0)x6
+speed   =~ x7 + start(0.7)x8 + start(1.8)x9
+
+
+参数标签
+我们也可以自己定义参数标签，标签不能以数字开头：
+```{r}
+library(lavaan)
+
+model <- '
+  # latent variable definitions
+    ind60 =~ x1 + x2 + myLabel*x3   #将ind60 =~ x3显示为myLabel
+    dem60 =~ y1 + y2 + y3 + y4
+    dem65 =~ y5 + y6 + y7 + y8
+  # regressions
+    dem60 ~ ind60
+    dem65 ~ ind60 + dem60
+  # residual (co)variances
+    y1 ~~ y5
+    y2 ~~ y4 + y6
+    y3 ~~ y7
+    y4 ~~ y8
+    y6 ~~ y8'
+    
+fit <- sem(model,
+           data = PoliticalDemocracy)
+coef(fit)
+```
+
+
+
+修改器
+我们预乘机制所使用的固定参数，修改初始值和参数标签等操作，都可以称为修改器，比如：
+f =~ y1 + y2 + myLabel*y3 + start(0.5)*y3 + y4
+#虽然y3项出现了两次，过滤器仍然会将y3作为一个指标对待
+
+
+简单相等约束
+有些情况我们会预设变量参数相等，可以用相同的label达到效果，也可以用equal()函数：
+visual  =~ x1 + v2*x2 + v2*x3 
+textual =~ x4 + x5 + x6
+speed   =~ x7 + x8 + x9
+#或者用equal()
+visual  =~ x1 + x2 + equal("visual=~x2")*x3
+textual =~ x4 + x5 + x6
+speed   =~ x7 + x8 + x9
+
+
+
+
+非线性相等和不相等约束
+```{r}
+y ~ b1*x1 + b2*x2 + b3*x3
+#我们用随机数生成一个数据集，并用sem函数拟合：
+
+set.seed(1234)
+Data <- data.frame(y = rnorm(100),
+                   x1 = rnorm(100),
+                   x2 = rnorm(100),
+                   x3 = rnorm(100))
+model <- 'y ~ b1*x1 + b2*x2 + b3*x3'
+fit <- sem(model, data = Data)
+coef(fit)
+#coef is a generic function which extracts model coefficients from objects returned by modeling functions 提取模型系数
+```
+如果我们想要为b1增加两个约束：b 1 =(b 2 +b 3 ) 2  b1=(b2+b3)2 和 b 1 ≥exp(b 2 +b 3 ) b1≥expa(b2+b3)，操作如下：
+```{r}
+model.constr <- '# model with labeled parameters
+                 y ~ b1*x1 + b2*x2 + b3*x3
+                 # constraints
+                 b1 == (b2 + b3)^2
+                 b1 > exp(b2 + b3)'
+fit <- sem(model.constr, data = Data)
+coef(fit)
+```
+
+
+
+
+
+结构方程的多组分析
+lavaan包完全支持多组分析。为了进行多组分析，你需要在数据组中加上组变量的名称。默认情况下，所有组会拟合相同的模型。在以下示例中，我们针对两个学校(Pasteur和Grant-White，可以看到数据集中有关学校的变量名为school)拟合例1的模型：
+```{r}
+HS.model <- 'visual  =~ x1 + x2 + x3
+             textual =~ x4 + x5 + x6
+             speed   =~ x7 + x8 + x9'
+fit <- cfa(HS.model,
+           data = HolzingerSwineford1939,
+           group = "school")
+summary(fit)
+```
+
+
+
+
+
+增长曲线模型
+潜变量模型的另一个重要种类是潜增长曲线模型。增长模型常用于分析纵向和发展数据。这种数据的结果度量基于几个场景，我们需要研究跨时间变化。在许多情况下，随时间变化的轨迹可以用简单线性或二次函数曲线来模拟。随机效应用来捕捉个体间差异，这种随机效应可以很方便地用潜变量表示，也叫做增长因子。
+在以下例子中，我们使用人工数据Demo.growth()，包含4个时间点。为了在4个时间点上拟合线性增长模型，我们需要用到含有一个随机截距潜变量和一个随机斜率潜变量的模型。
+模型如下：
+```{r}
+Demo.growth
+#展示一下数据结构
+```
+```{r}
+model <- 'i =~ 1*t1 + 1*t2 + 1*t3 + 1*t4
+          s =~ 0*t1 + 1*t2 + 2*t3 + 3*t4'
+fit <- growth(model, data = Demo.growth)
+summary(fit)
+```
+
+
+
+
+
+间接效应和中介分析
+设想一个典型的中介分析，X->M->Y，随机生成人工数据，示例如下：
+
+```{r}
+set.seed(1234)
+X <- rnorm(100)
+M <- 0.5*X + rnorm(100)
+Y <- 0.7*M + rnorm(100)
+Data <- data.frame(X = X, Y = Y, M = M)
+model <- '# direct effect
+            Y ~ c*X
+          # mediator
+            M ~ a*X
+            Y ~ b*M
+          # indirect effect (a*b)
+            ab := a*b
+          # total effect
+            total := c + (a*b)'
+            
+fit <- sem(model, data = Data)
+summary(fit)
+```
+
+
