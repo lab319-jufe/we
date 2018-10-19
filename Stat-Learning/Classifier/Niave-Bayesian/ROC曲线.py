@@ -5,6 +5,11 @@ Created on Fri Oct 19 14:46:03 2018
 @author: haoyun
 """
 
+'''
+作者：刘皓昀
+'''
+
+
 '''ROC曲线:描述TPR和FPR之间的关系
    TPR(True Positive Rate)=TP/(TP+FN)=recall
    FPR(False Positive Rate)=FP/(TN+FP)'''
@@ -18,6 +23,7 @@ y = digits.target.copy()
 y[digits.target==9] = 1
 y[digits.target!=9] = 0
 
+#自己的库
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=666)
 from sklearn.linear_model import LogisticRegression
