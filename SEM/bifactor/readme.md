@@ -1,0 +1,2 @@
+
+本文档是对Steven P. Reise(2012)论文《[The Rediscovery of Bifactor Measurement Models](http://www.tandfonline.com/doi/citedby/10.1080/00273171.2012.715555#tabModule)》的一次再现，数据是根据儿童焦虑和忧郁量表的一次测量，来自于原文提供的[相关关系矩阵](RCADS-15.csv)
