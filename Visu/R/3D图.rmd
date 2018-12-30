@@ -1,0 +1,46 @@
+---
+title: "3D图"
+author: "陈玲倩"
+date: "2018年12月29日"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+读入数据
+```{r}
+setwd("C:/Users/Administrator/Desktop/12.29") #设置工作区间 
+temp3.2 = read.table("1219.csv",header=F, sep=",") #读取csv文件 
+names(temp3.2)<-c("主题",	"北京市",	"东城区",	"西城区",	"朝阳区",	"丰台区",	"石景山区",	"海淀区",	"门头沟区",	"房山区",	"通州区",	"顺义区",	"昌平区",	"大兴区",	"怀柔区",	"平谷区",	"密云区",	"延庆区",	"燕山地区") 
+```
+
+表3-2 北京市初中学生参加综合社会实践主题活动完成情况统计表（百分比%）
+#3d图代码
+```{r}
+library(plot3D) 
+data(VADeaths)
+head(VADeaths)
+data(temp3.2)
+head(temp3.2)
+
+temp3.2<-as.matrix(temp3.2)
+temp3.2<-apply(temp3.2,2,as.numeric)
+is.matrix(temp3.2)
+temp3.2
+hist3D(z = temp3.2,
+       scale = FALSE, expand = 0.05, bty = "g", theta = 290, phi = 20, # expand = 0.01,z轴方向压缩
+       col = "sky blue", border = "magenta", shade = 0.2, ltheta = -290, alpha = 0.3, opaque.top = TRUE,
+       space = 0.3, ticktype = "detailed", d = 2) # 设定柱子间隙为0.3, d=2>1降低透视强度
+```
+
+#theta调方向
+```{r}
+hist3D(z = temp3.2,
+       scale = FALSE, expand = 0.05, bty = "g", theta = 400, phi = 20, # expand = 0.01,z轴方向压缩
+       col = "sky blue", border = "magenta", shade = 0.2, ltheta = -400, alpha = 0.3, opaque.top = TRUE,
+       space = 0.4, ticktype = "detailed", d = 2) # 设定柱子间隙为0.3, d=2>1降低透视强度
+```
+
+
+
