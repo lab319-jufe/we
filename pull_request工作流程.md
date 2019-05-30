@@ -24,12 +24,17 @@ presentation:
 
 <!-- slide data-background-image="http://i2.tiimg.com/611786/4ff2c860b820080b.png" -->
 
-1. <font color=red size=144>从其他仓库中fork</font>
+<font color=red size=144>
 
+1. 从其他仓库中fork
+
+</font>
 
 <!-- slide data-background-image="http://i2.tiimg.com/611786/e4bd89c40696c68a.png" -->
 <font color=#00dd00 size=144>
+
 fork成功
+
 </font>
 
 <!-- slide -->
@@ -45,6 +50,14 @@ fork成功
 <!-- slide data-background-image="http://i1.fuimg.com/611786/e078889e8ac8d782.png" -->
 4. 点进去create pull request就完事了
 
-<!-- slide data-background-image="http://i2.tiimg.com/611786/c56de48074d9b8a7.png" -->
+<!-- slide data-background-image="http://i2.tiimg.com/611786/4df52b24f04dffe2.png" -->
+
+<font color=red size=144>
+  
 5. 登陆原作者账号就可以确认这个pull request
-ps. 因为我是合作账号，所以直接就能更新进程，不需要登陆进去确认
+
+- ps. 因为我是合作账号，所以直接就有权限更新这个进程，不需要登陆lab319-jufe确认
+
+</font>
+
+<!-- slide data-background-image="http://i2.tiimg.com/611786/c56de48074d9b8a7.png" -->
