@@ -36,3 +36,15 @@ fork成功
 2. 在本地使用git clone获取自己账户下所fork的文件夹
 
 ![Markdown](http://i1.fuimg.com/611786/a983c3d3cf98a816.png)
+
+<!-- slide -->
+3. 照常完成add-commit-push的流程
+
+![Markdown](http://i2.tiimg.com/611786/98f8d41f4119d787.png)
+
+<!-- slide data-background-image="http://i1.fuimg.com/611786/e078889e8ac8d782.png" -->
+4. 点进去create pull request就完事了
+
+<!-- slide data-background-image="http://i2.tiimg.com/611786/c56de48074d9b8a7.png" -->
+5. 登陆原作者账号就可以确认这个pull request
+ps. 因为我是合作账号，所以直接就能更新进程，不需要登陆进去确认
