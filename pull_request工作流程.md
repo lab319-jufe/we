@@ -61,3 +61,31 @@ fork成功
 </font>
 
 <!-- slide data-background-image="http://i2.tiimg.com/611786/c56de48074d9b8a7.png" -->
+
+<!-- slide -->
+6. fork的库要跟上原始库的进度
+
+- 添加原作者项目的 remote 地址， 然后将代码 fetch 过来 
+
+```bash
+git remote add sri https://github.com/lab319-jufe/we
+git fetch sri #用于从另一个存储库下载对象和引用
+git remote -v #查看本地项目目录
+```
+
+<!-- slide -->
+- 合并
+
+```bash
+git checkout master
+git merge sri/master
+#git reset –hard sri/master #如果有冲突，放弃本地修改
+```
+
+- 此时已经更新到最新进程了，提交
+
+```bash
+git commit -am '更新到原作者的主分支'
+git push origin
+git push -u origin master -f –强制提交
+```
