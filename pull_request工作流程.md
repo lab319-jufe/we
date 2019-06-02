@@ -50,15 +50,13 @@ fork成功
 <!-- slide data-background-image="http://i1.fuimg.com/611786/e078889e8ac8d782.png" -->
 4. 点进去create pull request就完事了
 
-<!-- slide data-background-image="http://i2.tiimg.com/611786/4df52b24f04dffe2.png" -->
-
-<font color=red size=144>
+<!-- slide -->
   
 5. 登陆原作者账号就可以确认这个pull request
 
 - ps. 因为我是合作账号，所以直接就有权限更新这个进程，不需要登陆lab319-jufe确认
 
-</font>
+@import "http://i2.tiimg.com/611786/4df52b24f04dffe2.png"
 
 <!-- slide data-background-image="http://i2.tiimg.com/611786/c56de48074d9b8a7.png" -->
 
@@ -73,7 +71,6 @@ git fetch sri #用于从另一个存储库下载对象和引用
 git remote -v #查看本地项目目录
 ```
 
-<!-- slide -->
 - 合并
 
 ```bash
@@ -82,10 +79,13 @@ git merge sri/master
 #git reset –hard sri/master #如果有冲突，放弃本地修改
 ```
 
+<!-- slide -->
+
 - 此时已经更新到最新进程了，提交
 
 ```bash
-git commit -am '更新到原作者的主分支'
 git push origin
-git push -u origin master -f –强制提交
+git push sri
 ```
+
+![push到不同远程库](http://i2.tiimg.com/611786/dcf6bbde0d9a998a.png)
