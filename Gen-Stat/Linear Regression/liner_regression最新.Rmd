@@ -1,0 +1,598 @@
+---
+title: "linear regression"
+author: "杨钰萍2017级, 张志伟2019级"
+output: html_document
+
+---
+
+*latex语法 https://blog.csdn.net/u014630987/article/details/70156489*
+
+
+# 第三章 线性回归
+
+$\quad$
+
+## 3.1简单线性回归
+
+$\quad$
+
+* 一元线性回归模型：$y=\beta_0+\beta_1x+\varepsilon$
+
+$\quad$
+
+* 一元线性回归方程：$\hat y=\hat \beta_0+\hat \beta_1x$
+
+$\quad$
+
+### 3.1.1估计系数
+
+$\quad$
+
+用最小二乘法估计$\beta_0$和$\beta_1$时使残差平方和RSS达到最小,$RSS=\sum_{i=1}^n(y_i-\hat y_i)^2$ ,使RSS最小的参数估计值为:
+
+$$
+\begin{aligned}
+\hat \beta_1 =\frac{\sum\limits_{i=1}^n(x_i-\bar x)(y_i-\bar y)}{\sum\limits_{i=1}^n(x_i-\bar x)}\qquad
+\hat \beta_0 = \bar y - \hat \beta_1\bar x
+\end{aligned}
+$$
+
+
+### 3.1.2评价回归系数的显著性
+
+$\quad$
+
+1. 建立原假设和备择假设，$H_0:\beta_1 = 0 \ 和 \ H_1:\beta \not=0$
+
+
+2. 计算t统计量的值，$t=\frac{\hat \beta_1-0}{SE(\beta_1)}$
+
+3. 根据t统计量的值计算P值
+
+* 一般地，用X 表示检验的统计量，当H0为真时，可由样本数据计算出该统计量的值C，根据检验统计量X的具体分布，可求出P值。具体地说：
+
+* 左侧检验的P值为检验统计量X 小于样本统计值C 的概率，即：P = P{ X < C}
+
+* 右侧检验的P值为检验统计量X 大于样本统计值C 的概率：P = P{ X > C}
+
+* 双侧检验的P值为检验统计量X 落在样本统计值C 为端点的尾部区域内的概率的2 倍：P = 2P{ X > C} (当C位于分布曲线的右端时) 或P = 2P{ X< C}(当C位于分布曲线的左端时) 。若X 服从正态分布和t分布，其分布曲线是关于纵轴对称的，故其P 值可表示为P = P{| X| > C} 。
+
+4. 选择显著性水平，与P值相比较，若显著性水平取0.05，当P值小于0.05则拒绝原假设，认为响应变量与预测变量有关.
+
+* 根据$\hat \beta_1$的标准误差，可以计算$\hat \beta_1$的置信区间，$\bigg[\hat \beta_1-2\cdot SE(\hat \beta_1),\hat \beta_1+2\cdot SE(\hat \beta_1)\bigg]$，$SE(\hat \beta_1)^2 = \frac{\sigma^2}{\sum\limits_{i=1}^n(x_i-\bar x)}$
+
+
+### 3.1.3评价模型的准确性
+
+$\quad$
+
+* 判断模型拟合程度的常用相关量有：残差标准误和R^2统计量。
+
+* RSE越小说明模型拟合程度越好。R^2越大说明模型的拟合程度越好
+
+$$
+\begin{aligned}
+&RSE = \sqrt{\frac{1}{n-2}RSS},\ RSS=\sum_{i=1}^n(y_i-\hat y_i)^2,。\\
+\\
+&R^2 = \frac{TSS-RSS}{TSS}=1-\frac{RSS}{TSS}, \ TSS = \sum_{i=1}^n(y_i-\bar y)^2。\\
+\\
+&r=Cor(x,y)=\frac{\sum\limits_{i=1}^n(x_i-\bar x)(y_i-\bar y)}{\sqrt{\sum\limits_{i=1}^n(x_i-\bar x)^2}\sqrt{\sum\limits_{i=1}^n(y_i-\bar y)^2}},\quad r^2=R^2
+\end{aligned}
+$$
+
+```{r,echo=TRUE,warning=FALSE}
+library(MASS)#Boston数据集在MASS包里面
+#fix(Boston)  #看一下Boston是一张怎样的数据表
+#names(Boston)#看一下Boston数据表中的各个变量名称
+#用lm.fit2.1 <-lm(medv ~ lstat, data = Boston)可以得到跟以下两句同样的结果
+attach(Boston)
+lm.fit2.1 <- lm(medv ~ Boston$lstat) #得到线性回归方程
+summary(lm.fit2.1) #查看置信区间，p值，标准误，R^2，F统计量
+confint(lm.fit2.1,level = 0.95)#回归系数95%的置信区间
+```
+$\quad$
+
+##  3.2多元线性回归
+
+$\quad$
+
+* 多元线性回归模型：$y=\beta_0+\beta_1x+ \beta_2x_2+\dots+ \beta_px_p+\varepsilon\\$
+$\quad$
+* 多元线性回归方程：$\hat y=\hat \beta_0+\hat \beta_1x_1+\hat \beta_1x_2\dots+\hat \beta_px_p$
+
+$\quad$
+
+###  3.2.1估计回归系数（与一元线性回归相似）
+
+$\quad$
+
+###  3.2.2评价模型是否显著
+
+$\quad$
+
+1. 建立原假设和备则假设，$H_0:\beta_1 =\beta_2=\dots=\beta_p= 0 \ 和 \ H_1:至少有一个\beta_j \not=0$
+
+2. 计算F统计量的值，$F=\frac{(TSS-RSS)/p}{RSS/(n-p-1)}$
+
+3. 根据F统计量计算P值。也可以计算F统计量的值，如果线性回归假设是正确的，$E{RSS/(n-p-1)}=\delta^2$，进一步若$H_0$为真
+=则有，$E{(TSS-RSS)/P}=\delta^2$。因此，当响应变量与预测变量无关，F统计量应该接近1。另一方面，$H_1$为真，预计F大于1。
+
+4. 选择显著性水平，与P值相比较，若显著性水平取0.05，当P值小于0.05则拒绝原假设，认为至少有一个响应变量与预测变量有关。
+
+5. 除此之外，若我们想要检验系数的特定子集为0，比如$H_0：\beta_{p-q+1}=\beta_{p-q+2}=\dots=\beta_p=0$,此时F统计量变为，$F=\frac{(RSS_0-RSS)/q}{RSS/(n-p-1)}$  $RSS_0$为除q个变量之外的所有变量建立模型的残差平方。
+
+$\quad$
+
+### 3.2.3选定重要变量
+
+$\quad$
+
+* 评价模型的质量的指标主要有：赤池信息量准则AIC，贝叶斯信息准则BIC和调整R^2
+
+* 逐步回归法（向前逐步回归，向后逐步回归，向前向后逐步回归）
+
+
+```{r,echo=TRUE,warning=FALSE}
+lm.fit2.2.3 <- lm(medv ~ . - age, data = Boston) #medv关于除了age以外的所有变量的回归模型
+step(lm.fit2.2.3,direction="backward")
+```
+
+$\quad$
+
+### 3.2.4模型拟合程度
+
+
+
+$\quad$
+
+* 和一元线性回归一样，评价模型拟合程度的指标主要有RSE，和R^2。在多元线性回归中，$RSE = \sqrt{\frac{1}{n-p-1}RSS}$,
+
+
+* 因为在模型中，增加多个变量，即使事实上无关的变量，也会小幅度条R平方的值，为了排除变量数目的影响计算调整$R^2$,$$adjusted \ R^2 = 1- \frac{(RSS/（n-p-1))}{(TSS/(n-1))}$$
+
+```{r warning=F,echo=TRUE}
+lm.fit2.2.1 <- lm(medv ~ lstat + age, data = Boston) #medv关于lstat和age的回归模型
+summary(lm.fit2.2.1)
+```
+
+## 3.3回归模型中的其他注意事项
+
+$\quad$
+
+### 3.3.1定性预测变量
+
+$\quad$
+
+#### 1. 二值预测变量
+
+$\quad$
+
+* 对gender变量创建一个新变量
+$$
+\begin{aligned}
+&x_i=\left\{\begin{aligned}
+&1\quad &女性\\
+&0\quad &男性
+\end{aligned}
+\right.\\
+\end{aligned}
+$$
+* 将哑变量带入回归方程，得到以下模型:
+$$
+\begin{aligned}
+&y_i =\beta_0+\beta_1x_i+\varepsilon_i=\left\{\begin{aligned}
+&\beta_0+\beta_1+\varepsilon_i\quad &女性\\
+&\beta_0 + \varepsilon_i\quad &男性
+\end{aligned}
+\right.
+\end{aligned}
+$$
+
+* 除了0/1编码，我们还可以创建如下哑变量
+$$
+\begin{aligned}
+&x_i=\left\{\begin{aligned}
+&1\quad &女性\\
+&-1\quad &男性
+\end{aligned}
+\right.\\
+\end{aligned}
+$$
+* 将哑变量带入回归方程，得到以下模型:
+$$
+\begin{aligned}
+&y_i =\beta_0+\beta_1x_i+\varepsilon_i=\left\{\begin{aligned}
+&\beta_0+\beta_1+\varepsilon_i\quad &女性\\
+&\beta_0-\beta_1 + \varepsilon_i\quad &男性
+\end{aligned}
+\right.\\
+\end{aligned}
+$$
+不同编码方式的区别只在于对系数的解释不同
+
+$\quad$
+
+#### 2.定性预测变量有两个以上的水平
+
+$\quad$
+
+* 对种族变量创建两个哑变量变量
+$$
+\begin{aligned}
+&x_{i1}=\left\{\begin{aligned}
+&1\quad &亚洲人\\
+&0\quad &非亚洲人
+\end{aligned}
+\right.\\
+&x_{i2}=\left\{\begin{aligned}
+&1\quad &白种人\\
+&0\quad &非白种人
+\end{aligned}
+\right.\\
+\end{aligned}
+$$
+
+
+* 将两个哑变量带入回归方程，得到以下模型:
+$$
+\begin{aligned}
+&y_i =\beta_0+\beta_1x_{i1}+\beta_2x_{i2}+\varepsilon_i=\left\{\begin{aligned}
+&\beta_0+\beta_1+\varepsilon_i&亚洲人\\
+&\beta_0 + \beta_2+\varepsilon_i &白种人\\
+&\beta_0 + \varepsilon_i &非裔美国人
+\end{aligned}
+\right.
+\end{aligned}
+$$
+```{r warning=F,echo=TRUE}
+library(ISLR)
+attach(Carseats)
+head(ShelveLoc)
+lm.fit3.3.1 <- lm(Sales~.,data = Carseats)
+summary(lm.fit3.3.1)
+contrasts(ShelveLoc)
+```
+创建了两个虚拟变量ShelveLocGood，ShelveLocMedium。如果货架位置好，ShelveLocGood为1。如果货架位置中等，ShelveLocMedium为1。若货架位置差，ShelveLocGood，ShelveLocMedium都为0。
+
+
+
+
+$\quad$
+
+### 3.3.2线性模型的扩展
+
+$\quad$
+
+#### 1. 去除可加性假设
+
+$\quad$
+
+$$
+\begin{aligned}
+y &= \beta_0+\beta_1x_1+\beta_2x_2+\beta_3x_1x_2+\varepsilon\\
+&= \beta_0+(\beta_1+\beta_3x_2)x_1+\beta_2x_2+\varepsilon\\
+ &=\beta_0+\tilde\beta_1x_1+\beta_2x_2+\varepsilon\\
+ \tilde \beta_1&=\beta_1+\beta_3x_2
+\end{aligned}
+$$
+$x_1x_2$称为交互项,$\tilde \beta_1$随$x_2$变化，$x_1$对y的影响与$x_2$有关
+
+$\quad$
+```{r warning=F,echo=TRUE}
+library(MASS)
+lm.fit3.3.2 <- lm(medv ~ lstat + age , data = Boston)
+lm.fit3.3.2.1 <- lm(medv ~ lstat + age + lstat : age, data = Boston)
+summary(lm.fit3.3.2.1)
+AIC(lm.fit3.3.2,lm.fit3.3.2.1)
+```
+
+
+#### 2. 非线性关系(多项式回归)
+```{r warning=FALSE,echo=TRUE}
+library(car)
+lm.fit3.1.2<- lm(mpg ~ horsepower, data = Auto)
+lm.fit3.1.2.1<- lm(mpg ~ horsepower + I(horsepower ^ 2), data = Auto)
+AIC(lm.fit3.1.2,lm.fit3.1.2.1)
+```
+
+
+
+
+
+  
+  
+### 3.3.3潜在的问题
+
+$\quad$
+
+#### 1. 数据的非线性
+
+$\quad$
+
+* 线性回归模型假定预测变量和响应变量之间的关系是线性的。如果真实关系是非线性的，那么所得出的结论几乎都是不可信的。
+
+* 可以通过残差图判断数据的线性情况，左图残差呈现U形，说明数据是非线性的。如果数据确实为非线性，可以采取对预测变量进行非线性变换，
+
+* 右图是进行非线性变化的结果，残差无明显规律，说明经过非线性变换，提升了模型对数据的拟合程度。
+
+![](http://i2.tiimg.com/611786/77217243e3de9ab1.png)
+
+$\quad$
+
+
+#### 2. 误差项方差非恒定
+
+
+* 线性回归模型假定误差项的方差是恒定的，模型中的假设检验，标准误差和置信区间的计算都依赖于这一假设。
+
+* 如左图所示，残差图呈漏斗形，说明误差项方差非恒定，而且误差项的方差随响应值的增加而增加，可以采用凹函数对响应值做变换。
+
+* 右图显示了对响应值进行变换后的残差图，可以看出异方差不明显。
+
+![](http://i2.tiimg.com/611786/f0bd6aa858ca1711.png)
+```{r,echo=TRUE,warning= FALSE}
+library(ISLR)
+attach(Auto)
+lm.fit3.1.1 <- lm(mpg ~ horsepower, data = Auto)
+par(mfrow = c(2, 2)) #界面变成2*2，放四幅图
+plot(lm.fit3.1.1)
+```
+  
+* 左上图是，用来判断线性性。该图中显示出了一个曲线关系，说明因变量与自变量不满足线性性，可能要在回归模型中加入一个二次项；
+* 右上图是“正态Q-Q图”，可以用来判断是否满足正态性假设。图中的点均落在呈45°角的直线上，说明满足正态性假设；
+* 左下图是“位置尺度图”，用来判断同方差性。该图中水平线周围的点呈随机分布，说明满足同方差性；
+* 右下图是“残差与杠杆图”，可以用来鉴别异常值点(可读性不佳，不展开，后面补充更好的鉴别图像)
+
+* 加权最小二乘法,在每一$\varepsilon_i^2$中加入适当的权数$\omega_i$，以调整各项在平方和中的作用，对较大的$\varepsilon_i^2$赋予较小的权数，对较小的$\varepsilon_i^2$赋予较大的权数，使异方差变为同方差
+
+
+
+
+
+
+  
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+
+#### 3. 误差项自相关
+
+* 线性回归模型假定误差项是不相关的，回归系数和拟合值的标准误都基于这个假设。
+
+* 误差项之间的相关系数越大，相邻的残差越可能有相似的值。  
+
+  
+![](http://i2.tiimg.com/611786/e0a41191c24621aa.png)
+
+```{r,echo=TRUE}
+states<-as.data.frame(state.x77[,c("Murder","Population","Illiteracy","Income","Frost")])
+lm.fit3.1.3 <- lm(Murder ~ ., data = states)
+durbinWatsonTest(lm.fit3.1.3)
+```
+  
+  
+  p值大于0.05,不存在自相关,如果存在自相关可以通过差分法解决
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+#### 4. 离群点
+
+
+离群点是指yi远离模型预测值的点。红点20是一个典型的离群点。一般认为学生化残差的绝对值大于3的观测点可能是离群点。
+
+![](http://i2.tiimg.com/611786/6aad196858576960.png)  
+
+```{r,echo=TRUE}
+lm.fit2.2.2 <- lm(medv ~ ., data = Boston)
+outlierTest(lm.fit2.2.2)
+```
+#### 5. 高杠杆
+
+高杠杆点是是指观测点xi异常的点。红点41具有高杠杆值是一个典型的高杠杆点。从中间的图可以看出，红点的X1,X2都不异常，但它落在数据主体之外，也是高杠杆值。
+![](http://i2.tiimg.com/611786/6a138628906870c1.png)
+
+对于一元线性回归，杠杆统计量为:$h_i=\frac{1}{n}+\frac{(x_i-\bar x)^2}{\sum\limits_{i=1}^n(x_i-\bar x)^2}$,当观测点的杠杆值大大超过$\frac{p+1}{n}$,怀疑该点为高杠杆点
+
+```{r,echo=TRUE,warning=FALSE}
+hatplot <- function(fit)
+{
+    p <- length(coefficients(fit)) #p是参数个数
+    n <- length(fitted(fit))#n是样本量
+    plot(hatvalues(fit), main = "Index Plot of Hat Values")
+    abline(h = c(2, 3) * (p + 1) / n, col = "red", lty = 2)
+    identify(1:n, hatvalues(fit), names(hatvalues(fit)))#定位函数
+}
+hatplot(lm.fit2.2.2)
+```
+
+#### 6. 共线性
+
+
+共线性是指两个或更多的预测变量高度相关。
+
+
+![](http://i2.tiimg.com/611786/08c79f3988a74148.png)
+  
+  
+  
+  
+  
+![](http://i2.tiimg.com/611786/b17c772997adf085.png)
+
+* 可以通过预测变量的相关系数矩阵，来判断变量间是否存在共线性。如果三个或更多变量之间存在共线性，则称为多重共线性。
+
+* 评估多重共线性的方法是计算方差膨胀因子。$VIF(\hat \beta_j)=\frac{1}{1-R_{x_j|x_{-j}}^2}$ $R^2_{x_j|x_{-j}}$是$x_j$对所有预测变量回归的$R^2$。
+一般当VIF的超过5或10就表示有共线性问题
+
+* 共线性的解决方案有两种，剔除一个问题变量或者将共线变量组合成一个单一的预测变量。
+
+
+
+
+  
+  
+```{r,echo = TRUE}
+library(MASS)
+lm.fit2.2.3.1 <- lm(medv ~ . - age-rad-tax, data = Boston)
+vif(lm.fit2.2.3) 
+vif(lm.fit2.2.3.1)
+```
+  
+  
+## 3.5线性回归与K最近邻法的比较
+
+| | 线性回归 | K最近邻法 |
+| :------:| :------:| :------:|
+| 优点 | 估计的系数少，系数有简单的解释而且可以进行显著性检验| 不需要对$f(x)$的形式有明确的假设 |
+
+
+
+
+$\quad$
+
+$$
+\begin{aligned}
+\hat f(x_o) = \frac{1}{k}\sum_{x_i\in\omega}y_i
+\end{aligned}
+$$
+![](http://i1.fuimg.com/611786/2492ed9f3f6b980e.png)
+
+对一个含64个观察值的二维数据集进行KNN回归得到的$\hat f(x)$拟合图,左:k=1,右:k=9
+
+
+
+
+
+
+![](http://i2.tiimg.com/611786/349f3271ebad1d04.png)
+
+对一个含100个观测点的一维数据集进行kKNN回归$\hat f(x)$拟合图。真实关系由较粗直线表示,左k=1,右k=9
+
+
+
+
+
+![](http://i1.fuimg.com/611786/42bafc21f9411499.png)
+
+
+
+![](http://i1.fuimg.com/611786/8602800209827128.png)
+
+第一行真实关系是近似线性关系,第二行非线性程度增加.
+
+![](http://i2.tiimg.com/611786/02f4fae1b22c4317.png)
+
+
+
+
