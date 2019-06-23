@@ -1,0 +1,624 @@
+---
+title: "Untitled"
+author: "廖彩程，陈洁"
+date: "2019/6/21"
+output: html_document
+---
+# 第6章 线性模型选择与正则化
+
+标准线性回归模型如下所示：
+$$Y = \beta_0 + \beta_1X_1 + \cdots + \beta_pX_p + \epsilon \tag{6.1}$$
+通常用于描述响应变量$Y$和一系列预测变量$X_1,X_2,\cdots,X_p$之间的线性关系。
+
+线性模型在解决现实世界问题时，任然具备非线性模型无法超越的推断能力。本章介绍几种可以替代普通最小二乘拟合的其他一些拟合方法，这些方法是对简单线性模型的改进。
+
+与最小二乘法相比，其他拟合方法具有更高的预测准确率(prediction accuracy)和更好的模型解释力(model interpretability)
+
+预测准确率：若响应变量和预测变量的真实关系近似线性，则最小二乘估计的偏差较低。若$n \gg p$,则最小二乘估计的方差也较低，从而在测试样本集上会有较好的表现。然而，在不满足$n \gg p$的情况下，最小二乘估计得到的结果可能存在较大变异，导致过拟合。若$p>n$,最小二乘方法得到的系数估计结果不唯一。此时，方差无穷大，无法使用最小二乘方法。通过限制或缩减待估计系数，在牺牲偏差显著减小估计量方差。
+
+模型解释力：在多元回归模型中，常常存在一个或多个预测变量与响应变量不存在线性关系的情况，包含一些增加了模型的复杂性。却与模型无关的变量。运用最小二乘方法很难将这些系数缩减至零。
+
+本章主要讨论以下三类重要的方法:子集选择、压缩估计、 降维法
+
+子集选择：该方法从P个预测变量中挑选出与响应变量相关的变量形成子集，再对缩减的变量集合使用最小二乘方法。
+
+压缩估计：该方法基于全部P个预测变量进行模型的拟合。与最小二乘方法相比，该方法可以将估计系数往零的方向进行压缩。通过系数缩减（正则化(regularization))减少方差。通过选择不同的系数缩减方法。某些回归系数可以被缩减为零。该方法可用于变量选择。
+
+降维法：将p维预测变量投影至M维子空间中,$M < p$。将这M个不同的线性组合(linear combination) 或者投影(projection)来实现。将这M个不同的投影作为预测变量，再使用最小二乘拟合线性回归模型。
+
+## 6.1 子集选择
+
+### 6.1.1 最优子集选择(best subset selection)
+
+即对p个预测变量的所有可能组合分别使用最小二乘回归进行拟合。在$2^P$个模型中进行最优模型选择的过程通常可以分为两个阶段，具体过程见算法6.1  
+1.记不含预测变量的零模型为$M_0$,只用于估计各观测的样本均值。
+2.对于$k = 1, 2,\cdots,p$;
+    (a)拟合$ \begin{pmatrix} p \\ k \end{pmatrix}$个包含k个预测变量的模型；
+    (b)在$ \begin{pmatrix} p \\ k \end{pmatrix}$个模型中选择RSS最小或$R^2$最大的作为最优模型，记为$M_k$。
+3.根据交叉验证预测误差、$C_p(AIC)$、BIC或者调整$R^2$从$M_0,\cdots,M_p$个模型中选择出一个最优模型。
+
+低RSS及高$R^2$表明模型的训练(traing)误差低，但是我们的目标是选择一个测试(test)误差低的模型。
+![Markdown](http://i2.tiimg.com/611786/3600e9148074a858.png)
+
+在逻辑斯谛回归模型中使用最优子集选择方法时，算法6.1步骤2中应当使用偏差代替原先的RSS对模型进行选择。偏差：-2与最大似然函数值的乘积。  
+虽然最优子集选择方法简单直观，但计算效率不高。
+
+### 6.1.2 逐步选择
+逐步回归优点：限制了搜索空间，从而提高了运算效率
+
+#### 向前逐步选择   
+具有更高的运算效率。以一个不包含任何预测变量的零模型为起点，依次往模型中添加变量，直至所有的预测变量都包含在模型中。特别之处在于，每次只将能够最大限度地提升模型效果的变量加入模型中。  
+算法6.2   
+1.记不含预测变量的零模型为$M_0$。
+2.对于$k = 0, 1,\cdots,p-1$：
+    (a)从$p-k$个模型中进行选择，每个模型都在模型$M_k$的基础上增加一个变量；
+    (b)在$p-k$个模型中选择RSS最小或$R^2$最高的模型作为最优模型，记为$M_{k+1}$.
+3.根据交叉验证预测误差、$C_p(AIC)$、BIC或者调整$R^2$从$M_0,\cdots,M_p$个模型中选择出一个最优模型。
+
+与最优子集选择对$2^p$个模型进行拟合不同，向前逐步选择只需对零模型以及第k次迭代包含的$p-k$个模型进行拟合，其中$k=0, 1, 2,\cdots,p-1$。相当于拟合$1+p(p+1)/2$个模型。
+
+向前逐步选择无法保证找到的模型是所有$2^p$个模型中最优的。
+
+#### 向后逐步选择
+
+它以包含全部p个变量的全模型为起点，逐次迭代，每次移除一个对模型拟合结果最不利的变量。   
+算法6.3  
+1.记不含预测变量的零模型为$M_0$。
+2.对于$k = p, p-1,\cdots,1$：
+    (a)在$k$个模型中进行选择，每个模型都在模型$M_k$的基础上减少一个变量，则模型只含$k-1$个变量；
+    (b)在$k$个模型中选择RSS最小或$R^2$最高的模型作为最优模型，记为$M_{k-1}$。
+3.根据交叉验证预测误差、$C_p(AIC)$、BIC或者调整$R^2$从$M_0,\cdots,M_p$个模型中选择出一个最优模型。    
+向后逐步选择方法共需要对1+p(p+1)/2个模型进行搜素，在p太大不适合使用最优子集选择方法时可以采用该方法。同样向后选择方法无法保证得到的模型是包含p个预测变量子集的最优模型。
+
+向后选择方法需要满足样本量n大于变量个数p的条件。相反，向前逐步选择即使在n<p的情况下也可以使用。因此，当p非常大的时候，向前逐步选择是唯一可行的方法。
+
+#### 混合方法
+与向前逐步选择类似，该方法逐次将变量加入模型中，然而在加入新变量的同时，该方法也移除不能提升模型拟合效果的变量。这种方法在试图达到最优子集选择效果的同时也保留了向前和向后逐步选择在计算效率上的优势。
+
+### 6.1.3 选择最优模型
+训练误差可能是测试误差的一个较差估计。因此，RSS和$R^2$值并不适用于对包含不同个数预测变量的模型进行模型选择。   
+估计测试误差，通常有两种方法：    
+1.根据过拟合导致的偏差对训练误差进行调整，间接地估计测试误差。  
+2.通过验证集方法或交叉验证方法，直接估计测验误差。   
+根据模型规模对训练误差进行调整的方法有很多，这些方法可以用于选择包含不同变量数的模型。本节采用三种方法进行最优子集选取：$C_p、赤池信息量准则(Akaike information criterion,AIC)、贝叶斯信息准则(Bayesian onformation criterion,BIC)与调整R^2$   
+采用最小二乘法拟合一个包含d个预测变量的模型，$C_p$值的计算公式如下:
+$$C_p= \frac{1}{n}(RSS+2d\hat\sigma^2) \tag{6.2}$$
+$\hat\sigma^2$是公式(6.1)中各个响应变量观测误差的方差$\epsilon$的估计值$2d\hat\sigma^2$为惩罚项，用于调整训练误差倾向低估测试误差的这一现象。   
+
+测试误差较低的模型$C_p$统计量取值也较低，故而可以通过选择具有最低$C_p$的模型作为最优模型。
+![Markdown](http://i1.fuimg.com/611786/d6bb5d14273ed7aa.png)
+在上图中，运用$C_p$原则选出的六变量模型包含预测变量：income、limit、rating、cards、age和student。
+
+AIC准则适用于许多使用极大似然法进行拟合的模型。若公式(6.1)的模型误差项服从高斯分布，极大似然估计和最小二乘估计是等价的。在本例中，AIC由下式给出：
+$$ AIC = \frac{1}{n\hat\sigma^2}(RSS + 2d\hat\sigma^2)$$
+
+为了简化，没有加上常数项。对于最小二乘模型，$C_p和AIC$彼此成比例。    
+BIC是从贝叶斯观点中衍生出来的，最终亦与$C_p和AIC$z准则十分相似。对于包含d个预测变量的最小二乘模型，BIC通常由下式给出：
+$$ BIC=\frac{1}{n}(RSS+log(n)d\hat\sigma^2)\tag{6.3}$$
+测试误差较低的模型BIC统计量取值也较低。BIC统计量通常 给包含多个变量的模型施以较重的惩罚，故而与$C_p$相比，得到的模型规模更小。    
+调整$R^2$统计量由下式计算得到：
+$$ 调整R^2 = 1 - \frac{RSS/(n - d - 1)}{TSS/(n - 1)} \tag{6.4}$$
+调整$R^2$的值越大，模型测试误差越低。最大化$R^2$等价于最小化$\frac{RSS}{n - d - 1}$。调整$R^2$背后的想法是当模型包含了所有正确的变量，再增加其他冗余变量只会导致RSS小幅度的减小。   
+#### 验证与交叉验证
+
+它给出了测试误差的一个直接估计，并且对真实的潜在模型有较少的假设。
+![Markdown](http://i1.fuimg.com/611786/f6ef17657add1d25.png)
+验证误差通过随机选择四分之三的观测作为训练集，其余观测作为验证集计算得到。交叉验证误差按k=10折进行计算。    
+左：BIC的平方根   中：验证集误差    右：交叉验证误差
+
+### 6.5.1 最优子集选择
+使用若干个与棒球运动员上一年比赛成绩相关的变量来预测该棒球员的salary(薪水)
+```{r}
+library(ISLR)
+fix(Hitters)
+names(Hitters)
+dim(Hitters)
+sum(is.na(Hitters$Salary))#查看有几个有缺失的数据
+Hitters = na.omit(Hitters)#删除有缺失值的一整行
+dim(Hitters)
+sum(is.na(Hitters$Salary))
+```
+```{r}
+library(leaps)
+regfit.full = regsubsets(Salary ~., Hitters)#建立一系列包含给定数目预测变量的最优模型，来实现最优预测变量子集的筛选。默认至最优八变量模型的八种变量筛选结果。
+summary(regfit.full)#输出模型大小不同的情况下最优的预测变量子集
+#星号表示列对应的变量包含于行对应的模型中。
+regfit.full = regsubsets(Salary ~., data = Hitters, nvmax = 19)#拟合截至最优十九变量模型的十九个模型
+# nvmax参数设置用户所需的预测变量个数
+reg.summary = summary(regfit.full)
+names(reg.summary)
+reg.summary$adjr2
+reg.summary$rsq
+
+par(mfrow = c(2, 2))
+plot(reg.summary$rss, xlab = "Number of Variables", ylab = "RSS", type = "l")
+plot(reg.summary$adjr2, xlab = "Number of Variables", ylab = "Aajusted RSq", type = "l")
+which.max(reg.summary$adjr2)# 识别一个向量中最大值所对应点的位置
+points(11, reg.summary$adjr2[11], col = "red", cex = 2, pch = 20)#points()用于将点加在已有图像上
+
+plot(reg.summary$cp, xlab = "Number of Variables", ylab = "Cp", type = "l")
+which.min(reg.summary$cp)
+points(10, reg.summary$cp[10], col = "red", cex = 2, pch = 20)
+
+which.min(reg.summary$bic)
+plot(reg.summary$bic, xlab = "Number of Variables", ylab = "BIC", type = "l")
+points(6, reg.summary$bic[6], col = "red", cex = 2, pch = 20)
+par(mfrow = c(1 ,1))
+plot(regfit.full, scale = "r2")
+plot(regfit.full, scale = "adjr2")
+plot(regfit.full, scale = "Cp")
+plot(regfit.full, scale = "bic")
+
+coef(regfit.full, 6)# 提取该模型的参数估计值。
+
+```
+### 6.5.2 向前逐步选择和向后逐步选择
+可以分别通过设定regsubsets()函数中的参数method = "forward"和method = "backward"来实现向前逐步选择和向后逐步选择。
+
+```{r}
+regfit.fwd = regsubsets(Salary ~., data = Hitters, nvmax = 19, method = "forward")
+summary(regfit.fwd)
+regfit.bwd = regsubsets(Salary~., data = Hitters, nvmax = 19, method = "backward")
+summary(regfit.bwd)
+coef(regfit.full, 7)#获得最优七变量模型
+coef(regfit.fwd, 7)
+coef(regfit.bwd, 7)
+```
+### 6.5.3 使用验证集方法和交叉验证选择模型
+```{r}
+set.seed(1)
+train = sample(c(TRUE, FALSE), nrow(Hitters), rep = TRUE) #分隔数据的方法一
+test = (!train)
+# 获得训练集和测试集
+regfit.best = regsubsets(Salary ~., data = Hitters[train,], nvmax = 19)
+test.mat = model.matrix(Salary ~., data = Hitters[test,])#使用测试数据生成一个回归设计矩阵
+#model.matrix()函数在很多回归程序包中都用于生成回归设计矩阵"X"。
+val.errors = rep(NA, 19)
+for(i in 1:19){
+  coefi = coef(regfit.best, id = i)
+  pred = test.mat[, names(coefi)]%*%coefi
+  val.errors[i] = mean((Hitters$Salary[test] - pred)^2) #生成预测集的MSE
+}
+val.errors
+which.min(val.errors)
+coef(regfit.best, 10)
+
+# 编写的预测函数
+predict.regsubsets = function(object, newdata, id, ...) {
+  form = as.formula(object$call[[2]])
+  mat = model.matrix(form, newdata)
+  coefi = coef(object, id = id)
+  xvars = names(coefi)
+  mat[, xvars]%*%coefi
+}
+regfit.best = regsubsets(Salary ~., data = Hitters, nvmax = 19)
+coef(regfit.best, 10)
+```
+
+```{r}
+k = 10
+set.seed(1)
+folds = sample(1:k, nrow(Hitters), replace = TRUE) #1:k ,nrow(Hitters)次
+cv.errors = matrix(NA, k, 19, dimnames = list(NULL, paste(1:19))) #生成k行19列的储存矩阵
+for(j in 1:k) {
+  best.fit = regsubsets(Salary ~., data = Hitters[folds != j,], nvmax = 19)
+  for(i in 1:19) {
+    pred = predict(best.fit, Hitters[folds == j,], id = i)
+    cv.errors[j,i] = mean((Hitters$Salary[folds == j] - pred)^2)
+  }
+}
+mean.cv.errors = apply(cv.errors, 2, mean) #求列均值
+mean.cv.errors
+par(mfrow = c(1, 1))
+plot(mean.cv.errors, type = "b")
+reg.best = regsubsets(Salary ~., data = Hitters, nvmax = 19)
+coef(reg.best, 11)
+```
+
+## 6.2 压缩估计方法  
+将系数估计值往零的方向压缩，显著减少了估计量方差
+
+### 6.2.1 岭回归
+最小化如下式得到：
+$$\sum_{i=1}^{n}{({y_i - \beta_0 - \sum_{j=i}^{p}{\beta_jx_{ij}}})^2} + \lambda\sum_{j=1}^{p}{\beta_j}^2 = RSS + \lambda \sum_{j=1}^{p}\beta_j^2 \tag{6.5}$$
+其中，$\lambda$是一个调节参数(tuning parameter),将单独确定。岭回归通过最小化RSS寻求能够较好地拟合数据的估计量。$\lambda\sum_{j = 1} ^ {p} {\beta_j^2}$称为压缩惩罚(shrinkage penalty),当$\beta_1, \cdots, \beta_p$接近零时比较小，因此具有将$beta_j$估计值往零的方向进行压缩的作用。    
+![Markdown](http://i1.fuimg.com/611786/720e887eefe0ecdf.png)
+Credit数据集的岭回归系数估计值。
+$\hat \beta$是最小二乘系数估计值向量，记号$\mid\mid\beta\mid\mid_2$代表向量的$l_2$范数。定义为:
+$$\mid\mid\beta\mid\mid_2 = \sqrt{\sum_{j=1}^{p}{\beta_j^2}}$$
+衡量了$\beta$与原点的距离。    
+因为$X_j\hat{\beta}^R_{j,\lambda}$的值不只是取决于$\lambda$,也取决于第j个预测变量的尺度，甚至可能受到其他预测变量尺度的影响。因此，在使用岭回归之前，最好先用如下公式对预测变量进行标准化：
+$$\overline{x}_{i,j} = frac{x_{i,j}}{\sqrt{\frac{1}{n}\sum_{i = 1}^{n}(x_{ij}-\overline{x}_j)^2}} \tag{6.6}$$
+![Markdown](http://i2.tiimg.com/611786/439a99d775eb46dd.png)
+与右图相比，左图拟合效果更加光滑，因此偏差下降，方差上升。岭回归的最终模型包含全部的p个变量。
+### lasso
+lasso是一种近年来常用的用于克服岭回归上述缺点的方法。lasso的系数$\hat\beta^L_A$通过求解下式的最小值得到：
+$$\sum_{i=1}^{n}(y_i - \beta_0 - \sum_{j=1}^{p}\beta_jx_{ij}^2)+\lambda\sum_{j=1}^{p}\mid\beta_j\mid=RSS+\lambda\sum_{j=1}^{p}\mid\beta_j\mid \tag{6.7}$$
+系数向量$\beta$的$l_1$范数定义为：$\mid\mid\beta\mid\mid_t=\sum{}{}\mid\beta_j\mid$。    
+$l_1$惩罚项具有将其中某些系数的估计值强制设定为0的作用。lasso得到了稀疏模型(sparse model)——只包含所有变量的一个子集的模型。
+![Markdown](http://i2.tiimg.com/611786/5cc3c38ed3f161a8.png)
+#### 岭回归和lasso的其他形式
+lasso和岭回归的系数估计分别等价于求解一下问题
+$$\underset{\beta}{minimize}\lbrace\sum_{i= 1}^{n}(y_i-\beta_0-\sum_{j=1}^{p}\beta_jx_{ij})^2\rbrace, \sum_{j=1}^{p}\mid\beta_j\mid \leq s \tag{6.8}$$
+和
+$$\underset{\beta}{minimize}\lbrace\sum_{i= 1}^{n}(y_i-\beta_0-\sum_{j=1}^{p}\beta_jx_{ij})^2\rbrace, \sum_{j=1}^{p}\beta_j^2 \leq s \tag{6.9}$$
+公式(6.8)和(6.9)揭示了lasso、岭回归和最优子集选择的密切联系。
+$$\underset{\beta}{minimize}\lbrace\sum_{i= 1}^{n}(y_i-\beta_0-\sum_{j=1}^{p}\beta_jx_{ij})^2\rbrace, \sum_{j=1}^{p}I(\beta_j\neq 0)\leq s \tag{6.10}$$
+这里$I(\beta_j\neq 0)$是一个示性变量：当$\beta_j\neq 0$,该变量等于1，否则等于零。
+
+#### lasso的变量选择特征
+![Markdown](http://i2.tiimg.com/611786/37ef766c114404da.png)
+以$\hat\beta$为中心的每个椭圆代表了某一个RSS数值。等式(6.8)和(6.9)表示，lasso和岭回归系数估计是由其条件区域与椭圆第一次相交点所决定的。
+#### 对比lasso和岭回归
+很明显，lasso较岭回归有较大的优势，因为它可以得到只包含部分变量的简单易解释模型。   
+![Markdown](http://i2.tiimg.com/611786/8eb3bfd92e5bd9a5.png)
+
+左：lasso 得到的 黑：偏差平方和 绿：方差 紫：测试均方误差
+右： 实线：lasso   虚线：岭回归
+
+45个预测变量是模拟生成的，它们与响应变量相关，而lasso潜在地假设一些系数的真值为零。所以岭回归优于lasso。
+
+![Markdown](http://i2.tiimg.com/611786/fc336ea4de16ff1f.png)
+
+左：lasso 得到的 黑：偏差平方和 绿：方差 紫：测试均方误差
+右：实线：lasso   虚线：岭回归
+响应变量只是45个预测变量中2个变量的函数。所以lasso优于岭回归。
+
+这说明岭回归和lasso并没有哪个是绝对好的。
+
+#### 一个岭回归和lasso的简单例子
+普通的最小二乘可以简化为寻找$\beta_1,\cdots,\beta_p$来最小化
+$$ \sum_{j=1}^{p}(yi-\beta_j)^2 \tag{6.11}$$
+此时，最小二乘的解是$\hat{\beta_j}=y_i$。
+此时，岭回归等同于寻找$\beta_1,\cdots,\beta_p$,使得
+$$\sum_{j=1}^{p}(yi-\beta_j)^2 +\lambda \sum_{j=1}^{p}\beta_j^2 \tag{6.12}$$
+达到最小：    
+lasso则相当与寻找使得
+$$\sum_{j=1}^{p}(yi-\beta_j)^2 + \lambda\sum_{j=1}^{p}\mid\beta_j\mid \tag{6.13}$$
+达到最小的系数。
+可以证明在这种情况下，岭回归估计有如下形式
+$$ \hat \beta_j^R = y_i/(1+\lambda) \tag{6.14}$$
+而lasso估计形式如下：
+$$
+ \hat \beta_j^L =
+ \begin{cases}
+ y_i - \frac{\lambda}{2}, y_i > \frac{\lambda}{2}\\[3ex]
+ y_i + \frac{\lambda}{2}, y_i < - \frac{\lambda}{2}\\[3ex]
+ 0,\,\,\,\,\,\,\,\,\,\,\, \mid y_i\mid \leq\frac{\lambda}{2}
+ \tag{6.15}
+ \end{cases}
+ $$
+![Markdown](http://i2.tiimg.com/611786/418bc64ac85ebbc0.png)
+
+岭回归一相同比例压缩每个维度，而lasso以相同绝对数量压缩所有的系数，结果使得足够小的系数被压缩至零。
+
+#### 岭回归和lasso的贝叶斯解释
+![Markdown](http://i2.tiimg.com/611786/b5cbf260c1d5c940.png)
+lasso的先验分布在零处存在尖峰，而高斯分布在零处越来越平坦。因此，lasso倾向与得到一个许多系数(完全)为零的分布，而岭回归假设系数关于零随机分布。
+
+### 6.2.3 选择调节参数
+选择一系列$\lambda$的值，计算每个$\lambda$的交叉验证误差，然后选择使得交叉验证误差最小的参数值，最后 ，用所有可用变量和选择的调节参数对模型进行重新拟合。
+![Markdown](http://i2.tiimg.com/611786/98fa4ed7ff02c97d.png)
+
+左：对Credit数据集用岭回归的交叉验证误差，$\lambda$选取各种不同的值。
+
+右：系数估计作为$\lambda$的函数。垂直虚线表示根据交叉验证选择的参数$\lambda$。
+
+$\lambda$相对较小，说明相对于最小二乘拟合，这里的最优拟合只进行了少量的压缩。下降不明显也说明存在很多种系数取值情况可以得到很小的误差。可以简单地使用最小二乘方法。
+
+![Markdown](http://i2.tiimg.com/611786/d09180f9dc34ab64.png)
+对图6-9中的稀疏模拟数据进行10折交叉验证得到的结果。   
+左：交叉验证误差   右：系数估计  垂直虚线：交叉验证误差最小处
+彩色：信号变量(signal variable)和噪声变量(noise variable)。交叉验证和lasso的结合可以正确地识别模型的两个信号变量。
+## 6.6 实验2：岭回归和lasso回归
+使用glmnet包来实现岭回归和lasso，该包的主要函数为glmnet()
+```{r}
+x = model.matrix(Salary ~., Hitters)[,-1] #自动将定性变量转化成哑变量,glmnet()函数只能处理数值型输入变量
+y = Hitters$Salary
+```
+### 6.6.1 岭回归
+glmnet()函数中的alpha参数用于确定拟合哪种模型，alpha = 0,拟合岭回归模型；alpha=1,拟合lasso模型
+```{r}
+library(glmnet)
+grid = 10^seq(10, -2, length = 100)
+ridge.mod = glmnet(x, y, alpha = 0, lambda = grid)
+dim(coef(ridge.mod))
+```
+使用$l_2$范数，$\lambda$ =11498时的系数估计结果
+```{r}
+ridge.mod$lambda[50]
+coef(ridge.mod)[,50]
+sqrt(sum(coef(ridge.mod)[-1, 50]^2)) 
+```
+使用$l_2$范数，$\lambda$ =705时的系数估计结果
+```{r}
+ridge.mod$lambda[60]
+coef(ridge.mod)[,60]
+sqrt(sum(coef(ridge.mod)[-1, 60]^2))
+```
+获得新的$\lambda$值对应的岭回归系数，lambuta=50 
+```{r}
+predict(ridge.mod, s = 50, type = "coefficients")[1:20,]
+```
+分割数据集
+```{r}
+set.seed(1)
+train = sample(1:nrow(x), nrow(x)/2)
+test = (-train)
+y.test = y[test]
+```
+基于训练集建立岭回归模型，并计算lambuta = 4时测试集的MSE
+将type = " coefficients"替换为newx参数，可获得测试集上的预测值
+```{r}
+ridge.mod = glmnet(x[train,], y[train], alpha = 0, lambda = grid, thresh = 1e-12)
+ridge.pred = predict(ridge.mod, s = 4, newx = x[test,])
+mean((ridge.pred - y.test)^2)
+mean((mean(y[train]) - y.test)^2) #计算测试集的MSE
+
+ridge.pred = predict(ridge.mod, s = 1e10, newx = x[test,])
+mean((ridge.pred - y.test)^2)
+```
+从上诉看出使用$\lambda$=4拟合的岭回归模型的测试MSE要远小于只含有截距项模型的测试MSE。
+
+以下实验将检验使用$\lambda$=4拟合的岭回归是否优于最小二乘回归模型
+```{r}
+ridge.pred = predict(ridge.mod, s = 0,newx = x[test,])
+mean((ridge.pred - y.test)^2)
+lm(y ~ x, subset = train)
+predict(ridge.mod, s = 0,type = "coefficients")[1:20,]
+```
+ 在实际的建模过程中，使用交叉验证来选择调节参数$\lambda$
+比直接选择$\lambda$=4更好。内置交叉验证函数cv.glmnet()来选择调节参数$\lambda$，默认十折，folds参数来设置交叉验证的折数。
+```{r}
+set.seed(1)
+cv.out = cv.glmnet(x[train, ], y[train], alpha = 0)
+plot(cv.out)
+bestlam = cv.out$lambda.min
+bestlam
+ridge.pred = predict(ridge.mod, s = bestlam, newx = x[test, ])
+mean((ridge.pred - y.test)^2)
+out = glmnet(x, y, alpha = 0)
+predict(out, type = "coefficients", s = bestlam)[1:20,]
+```
+结果表明，当使用$\lambda$时，测试MSE会有进一步的改善。
+
+###  6.6.2 lasso
+```{r}
+lasso.mod = glmnet(x[train,], y[train], alpha = 1, lambda = grid)
+plot(lasso.mod)
+set.seed(1)
+cv.out = cv.glmnet(x[train,], y[train], alpha = 1)
+plot(cv.out)
+bestlam = cv.out$lambda.min
+lasso.pred = predict(lasso.mod, s = bestlam, newx = x[test,])
+mean((lasso.pred - y.test)^2)
+out = glmnet(x, y, alpha = 1, lambda = grid)
+lasso.coef = predict(out, type = "coefficients", s = bestlam)[1:20,]
+lasso.coef
+```
+
+# 6.3 降维方法
+   
+    将预测变量进行转换，然后用转换之后的变量拟合最小二乘模型，这种技术称之为降维方法。
+    
+   令$Z_1,Z_2,\cdots,Z_m$表示$M$个原始预测变量的线性组合（$M$<$p$，共有$p$个原始变量），即
+              $$Z_m=\sum_{j=1}^p {\phi}_{jm}X_j$$
+        
+   其中，$\phi_{1m},\phi_{2m},\cdots,\phi_{pm}$是常数，$m=1,\cdots,M$。然后用转换之后的变量拟合最小二乘模型
+$$y_i=\theta_0 + \sum_{m=1}^M {\theta}_mz_{im} + \epsilon_i ,i = 1,\cdots,n$$
+   如果常数$\phi_{1m},\phi_{2m},\cdots,\phi_{pm}$是经过选择的，那么这样的降维方法效果通常比最小二乘回归更好。
+   “降维”这个术语是指某种方法可以使估计$p+1$个系数$\beta_0,\beta_1,\cdots,\beta_p$的问题简化为估计$M+1$个系数$\theta_0,\theta_1,\cdots,\theta_M$的问题，这里$M<p$。也就是说问题的维度从$p+1$降至$M+1$。
+    注意公式：
+$$\sum_{m=1}^M \theta_mz_{im}=\sum_{m=1}^M\theta_m\sum_{j=1}^p\phi_{jm}x_{ij}=\sum_{j=1}^p\sum_{m=1}^M\theta_m\phi_{jm}x_{ij}=\sum_{j=1}^p\beta_jx_{ij}$$
+
+
+
+     
+   这里$\beta_j=\sum_{m=1}^M\theta_m\phi_{jm}$
+    
+    
+    
+   所有降维方法都有两个步骤。首先，将原始变量转换为$Z_1,Z_2,\cdots,Z_M$;然后，用这$M$个变量建立模型。然而选择$Z_1,Z_2,\cdots,Z_M$，也就是选择$\phi_{jm}$可以通过很多不同的方法。
+     
+     
+     
+##  6.3.1 主成分回归
+
+
+主成分分析使一种可以从多个变量中得到低维变量的有效方法。
+
+
+
+![Markdown](http://i1.fuimg.com/611786/5a6469051e48dc33.png)
+
+
+
+如图所示，图形表示的是100个城市中，pop（人口规模）和某公司的ad（广告支出）之间的关系,绿色实线代表数据的第一主成分方向，在这个方向数据波动最大。第一主成分可以表示为$$Z_1=0.839\times(pop-\overline{pop})+0.544\times(ad-\overline{ad})$$
+
+
+这里$\phi_{11}=0.839,\phi_{12}=0.544$是主成分载荷，它定义了主成分方向。在这里必须满足$\phi_{11}^2+\phi_{12}^2=1$，否则可以人为的通过增大$\phi_{11}$和$\phi_{12}$使$Var(\phi_{11}\times(pop-\overline{pop})+0.544\times(ad-\overline{ad})$增大。在这个第一主成分公式中，两个载荷都是正数且大小相近，所以$Z_1$几乎是两个变量的平均。
+
+   主成分分析有另一种解释：第一主成分向量定义了与数据最接近的那条线，第一主成分线使得所有点到该线的垂直距离平方和最小。如图所示：
+
+![Markdown](http://i1.fuimg.com/611786/a3acef148b0e4263.png)
+
+
+
+左图中的虚线表示了这些距离，虚线与实线的交点就是这些点在主成分上的投影。第一主成分的选择使得投影得到的观测与原始观测最为接近。
+
+右图是将左图旋转，使第一主成分方向同$x$轴一致。
+
+我们可以将主成分$Z_1$看作是在每个位置的汇总。在这个例子中，如果$Z_{i1}=0.839\times(pop-\overline{pop})+0.544\times(ad-\overline{ad})<0$，表明这个城市的人口规模和广告支出低于平均水平。
+
+如图显示了$Z_{i1}$与pop和ad的关系。这张图说明第一主成分与两个变量高度相关，也就是说，第一主成分捕捉到了pop和ad两个变量所包含的大部分信息。
+
+![Markdown](http://i2.tiimg.com/611786/0893f8d45a56c1ed.png)
+
+
+
+第二主成分$Z_2$是所有与$Z_1$无关的原始变量的线性组合中方差最大的。$Z_1$与$Z_2$的零相关关系等价于$Z_1$的方向是垂直或者正交与$Z_2$
+
+![Markdown](http://i1.fuimg.com/611786/18c1727553b4fe05.png)
+
+
+
+如图所示，$Z_{i2}$与pop、$Z_{i2}$与ad的散点图可知，$Z_{i2}$与这两个变量的关系不明显，证明了只需要第一主成分就可以准确地代表pop和ad。
+
+### 主成分回归方法
+
+主成分回归是指构造前$M$个主成分$Z_1,\cdots,Z_M$，然后以这些主成分作为预测变量，用最小二乘拟合回归模型。其主要思想是少数的主成分足以解释大部分的数据波动和数据与响应变量之间的关系。
+
+
+![Markdown](http://i2.tiimg.com/611786/a45b8586e7e37a3b.png)
+
+
+
+如图展示了在图6-8和图6-9中的模拟数据上的拟合结果。两个数据集都有$n=50$个观测和$p=45$个变量。图6-8数据集中的响应变量是所有变量的函数，图6-9数据集中的响应变量只由两个变量得到。观察图可知，随着引人在回归模型的主成分越来越多，偏差随之降低，而方差随之增大。当$M=p=45$时，主成分回归就简单地等于用所有原始变量进行最小二乘拟合。在左图中可以明显观察到，在主成分回归中选择一个合适的$M$可以明显提升最小二乘的拟合效果，但在这个例子中，主成分回归并没有比岭回归和lasso拟合效果好，这可能是数据生成机制导致：需要很多主成分才能对响应变量进行充分建模。相反，如果只需要前几个主成分就可以充分捕捉到预测变量的变动及其与响应变量的关系，主成分回归的效果会更好。
+
+![Markdown](http://i1.fuimg.com/611786/bde2c656fb4e242b.png)
+
+
+
+如图6-19表示了在另一个数据集上的结果，观察左图可知，均方误差明显在$M=5$时达到最低。右图展示了岭回归和lasso在这个数据上的结果。与最小二乘相比，三种方法的结果都有显著提升，其中主成分分析和岭回归比lasso更好一些。
+
+
+注意：当模型只包含特征变量的一个小子集时，它对模型的提升效果并不明显。从这个角度看，主成分分析更接近岭回归，而不是lasso。
+
+![Markdown](http://i1.fuimg.com/611786/5d97bb9796629673.png)
+
+
+
+在主成分回归里，主成分数量$M$一般通过交叉验证确定。将主成分回归应用于Credict数据集上的结果由图6-20展示。右图表示交叉验证误差，它是$M$的函数。最小验证误差出现在$M=10$上，这几乎没有实现降维，因为当$M=11$时主成分回归与简单最小二乘等价。
+
+应用主成分回归时，通常建议在构造主成分之前，用$\check{x}_{ij}=\frac{x_{ij}}{\sqrt{\frac {1}{n}\sum_{i=1}^n(x_{ij}-\overline{x}_j)}}$这个公式对每个变量进行标准化处理，否则方差较大的变量将在主成分中占主导地位，变量的尺度将最终影响主成分回归模型。如果使用同一单位计量，可以不进行标准化处理。
+
+
+主成分回归方法涉及能够最大限度地代表预测变量$X_1,\cdots,X_p$的线性组合或方向。这些方向是通过无指导方法得到，因此响应变量$Y$对选择主成分方向并无帮助。这给主成分回归带来一个弊端：无法保证那些很好地解释预测变量的方向同样可以很好地预测响应变量。无指导方法将在第10章进一步讨论。
+
+
+# 6.3.2 偏最小二乘
+偏最小二乘是一种降维手段，它将原始变量的线性组合$Z_1,\cdots,Z_M$作为新的变量集，然后用这$M$个新变量拟合最小二乘模型。与主成分回归不同，偏最小二乘通过有指导的方法进行新特征取值，也就是说，偏最小二乘利用了响应变量$Y$的信息筛选新变量。
+
+
+![Markdown](http://i2.tiimg.com/611786/7bef40c80033e44f.png)
+
+
+图6-21展示了在广告数据上进行偏最小二乘的例子。绿色实线代表第一PLS方向，点线表示第一主成分方向。与PCA方向相比，PLS方向上pop每变动一单位时ad的变动量较小。这也说明pop与响应变量的相关性高于ad。PLS方向不仅可以像PCA一样很好地拟合预测变量，而且更好地解释了响应变量。
+
+
+确定第二PLS方向，首先用$Z_1$中地每个变量对$Z_1$做回归，取其残差来调整每个变量。残差可以认为是没有被第一PLS方向解释地剩余信息。然后利用这些正交数据计算$Z_2$，形式上同基于原始数据计算$Z_1$的完全一致。重复迭代进行$M$次来确定多个PLS成分$Z_1，\cdots,Z_M$。最后，同主成分回归一样，用$Z_1,\cdots,Z_M$拟合线性最小二乘模型来预测$Y$。
+
+同主成分回归一样偏最小二乘方向的个数一般通过交叉验证选择。一般情况下偏最小二乘回归前应对预测变量和响应变量标准化处理。
+
+作为有指导的降维技术，PLS虽然可以减小偏差，但它可能同时增大方差，所有总体来说PLS和PCA各有优劣。
+
+
+
+
+
+# 6.7.1 主成分回归
+
+
+
+```{r}
+library(pls)
+set.seed(2)
+pcr.fit=pcr(Salary~.,data=Hitters,scale=TRUE,validation="CV") #par()函数实现主成分(PCR)，scale=TRUE可以在生成主成分之前标准化每个预测变量，validation="CV"使par()函数使用十折的交叉验证计算每个可能的主成分个数M所对应的交叉验证误差
+summary(pcr.fit)
+validationplot(pcr.fit,val.type = "MSEP") #做出交叉验证MSE的图像
+set.seed(1)
+pcr.fit=pcr(Salary~.,data=Hitters,subset=train,scale=TRUE,validation="CV")
+validationplot(pcr.fit,val.type = "MSEP")
+pcr.pred=predict(pcr.fit,x[test,],ncomp = 7)
+mean((pcr.pred-y.test)^2)
+pcr.fit=pcr(y~x,scale=TRUE,ncomp=7)
+summary(pcr.fit)
+```
+
+
+
+
+
+
+
+# 6.7.2 偏最小二乘回归
+
+
+```{r}
+set.seed(1)
+pls.fit=plsr(Salary~.,data=Hitters,subset=train,scale=TRUE,validation="CV") #plsr()函数可以拟合偏最小二乘回归模型
+summary(pls.fit)
+validationplot(pls.fit,val.type = "MSEP")
+pls.pred=predict(pls.fit,x[test,],ncomp = 2)
+mean((pls.pred-y.test)^2)
+pls.fit=plsr(Salary~.,data=Hitters,scale=TRUE,ncomp=2)
+summary(pls.fit)
+```
+
+
+
+
+# 6.4 高维问题
+
+
+## 6.4.1 高维数据
+
+特征数比观测数大的数据被称为高维数据。把高维定义为变量数目$p$大于观测数目$n$。在进行有指导学习时，应当记住所讨论的内容也适用于$p$略小于$n$的情况。
+
+
+## 6.4.2 高维度下出现的问题
+
+
+最小二乘在高维度下出现的问题：当变量个数$p$大于或者等于观测数$n$时，最小二乘将无法实施，因为不管特征变量与响应变量是否真正存在关系，最小二乘估计的系数都能很好地拟合数据，而且模型地残差为零。
+
+
+![Markdown](http://i1.fuimg.com/611786/29537c033a0f6c21.png)
+
+
+图6-22展示了特征变量$p=1$的两种情况：20个观测时和2个观测时。左图：当有20个观测时，$n>p$，最小二乘回归线没有很好地拟合数据。右图：当只有2个观测时，不管观测的数值如何，回归线总可以精确地拟合数据。如此完美的拟合必然导致过拟合问题。右图的最小二乘线在由左图观测构成的测数集上将表现很差。当$p>n$或者$p\approx{n}$时，最小二乘回归线非常光滑，因此导致了过拟合。
+
+![Markdown](http://i2.tiimg.com/611786/bed4f9b856a69a29.png)
+
+
+如图6-23，模拟产生20个观测数据，用1到20个特征变量分别进行回归，这些变量与响应变量完全不相关。左图：随着特征值的增多，$R^2$增加到1。中图：随着特征值增多，训练均方误差下降为0。右图：测试均方误差随着特征值增多而逐渐增大。所以只考虑$R^2$和训练数据集均方误差很可能错误地得到这样地结论：包含最多变量地模型时好的。这表明当分析有大量变量的数据集和总是在独立测试集上评估模型性能时，给与更多的考虑是非常重要的。
+
+
+# 6.4.3 高维数据的回归
+
+
+![Markdown](http://i2.tiimg.com/611786/85dea8c128c1b558.png)
+
+图6-24展示了lasso在一个简单模拟数据中的表现。使用lasso对具有$n=100$个观测的数据进行建模，特征变量有$p=20,50$或2000个，其中20个与输出相关。箱线图的纵轴表示使用公式$\sum_{i=1}^n(y_i-\beta_0-\sum_{j=1}^p\beta_j\lambda_{ij})^2+\lambda\sum_{j=1}^p\mid\beta_j\mid$中三个不同调节参数$\lambda$时的均方误差。横轴表示的是自由度而不是$\lambda$的取值，对lasso来讲自由度就是非零系数估计的个数。
+    
+    
+    
+   当$p=20$时，公式$\sum_{i=1}^n(y_i-\beta_0-\sum_{j=1}^p\beta_j\lambda_{ij})^2+\lambda\sum_{j=1}^p\mid\beta_j\mid$中$\lambda$很小时，验证集误差达到最小（$\lambda$很小时，lasso与最小二乘等价，当$\lambda$足够大时，lasso估计得到一个零模型，所有系数估计值均为0）。当$p$很大时，验证集误差在较大的$\lambda$处达到最小。
+   
+   图6-24强调了三个要点：（1）正则或者压缩在高维问题中至关重要；（2）合适的调节参数对于得到好的预测非常关键；（3）测试误差随着数据维度（即特征或预测变量的个数）的增加而增大，除非新增的特征变量与响应变量确实相关。第三点是分析高维数据的关键问题，被称为维数灾难。这是因为噪声特征增大了问题的维度，从而增大了过拟合的风险（由于训练数据集中噪声特征与响应变量会偶尔相关，所以其系数可能非零），同时它对降低测试误差也没有任何贡献。
+   
+   
+# 6.4.4 高维数据分析结果的解释
+
+
+使用lasso、岭回归或者其他回归过程拟合高维数据时，必须非常谨慎解释模型的结果。在高维问题下，存在非常极端的共线性问题：模型中的任何一个变量都可以写成其他变量的线性组合。这就意味着我们无法准确地知道哪个变量（如果存在）可以预测输出变量，也无法确定最优系数。我们最多可以做到的是，增大哪些可以预测输出变量的变量系数。
+
+例如在尝试使用50万个SNPs（单核苷酸多态性）来预测血压，向前逐步选择表明其中17个SNPs能够在训练数据集上得到一个良好的模型。但这并不是说这17个变量就比其他变量的预测更有效，可能有很多类似的17个变量的集合也可以达到这样的效果。如果上述数据是独立的，那么使用向前逐步选择就可能得到一个不同的SNPs集合，它与上述模型结果包含不同甚至完全不同的SNPs。但这并不影响得到的模型的价值——例如，模型可能在一个独立的病人集合中有效地预测血压，也可能为医生带来临床上的应用。但是，我们必须注意不能夸大得到的结果，而是要明白得到的模型只是很多个可以用来预测血压的模型中的一个，并且需要在独立的数据集中进一步验证。
+
+在解释高维数据拟合模型的误差和拟合结果的时候，也应该特别注意。前面提到，当$p>n$时很容易得到一个残差为零的但是没有用的模型。因此绝对不能在训练数据集上用误差平方和、$p$值、$R^2$统计量或者其他传统的对模型拟合效果的度量方法来证明高维情况下模型拟合的效果。重要的是在独立的测试集进行验证或者进行交叉验证。例如，独立测试集的均方误差或者$R^2$就是对模型拟合效果的有效度量，而训练均方误差则不是。
+   
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
