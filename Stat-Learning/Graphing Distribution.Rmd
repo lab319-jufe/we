@@ -4,7 +4,7 @@ author: "廖彩程"
 date: "2019/5/27"
 output: html_document
 ---
-*学习资源来自于Gareth James等的《统计学习导论——基于R应用》*
+*学习资源来自于Gareth James的《统计学习导论——基于R应用》*
 
 # 2.1 什么是统计学习 
 ![Markdown](http://i2.tiimg.com/611786/854ce55de137dcf8.png)
@@ -13,7 +13,7 @@ output: html_document
 
 　　在该案例中，广告预算是输入变量(input variable),sales为输出变量(output variable)。
 
-　　输入变量通常用大写字母X表示，下标区分不同的变量，输入变量又叫预测(predictor)变量、自(independent)变量、属性(feature)变量，甚至变量(variable)输出变量通常用Y表示，称为响应(response)变量或者因变量(dependent variable)。
+　　输入变量通常用大写字母X表示，下标区分不同的变量，输入变量又叫预测(predictor)变量、自(independent)变量、属性(feature)变量，甚至变量(variable)。输出变量通常用Y表示，称为响应(response)变量或者因变量(dependent variable)。
 
 　　一般情况下，假设观察到一个定量的相应变量和p个不同的预测变量，记为X1,X2,…。假设这个Y和$X = (X_1, X_2, \cdots, X_p)$有一定的关系，可以表达成一个比较一般的形式 
 $$Y = f(X) + \epsilon \tag{2.1}$$
@@ -169,6 +169,19 @@ $$ Ave(\hat{f}(x_0) - y_0)^2 \tag{2.6} $$
 $$ E(y_0 - \hat{f}(x_o))^2 = Var(\hat{f}(x_0)) + [Bias(\hat{f}(x_0))]^2 + Var(\epsilon) \tag{2.7} $$
 　　$E(y_0 - \hat{f}(x_o))^2$是模型的期望测试均方误差(expected test MSE),实际上是用大量训练数据重复估计后，又在$x_0$处带入不同的估计所得的平均测试均方误差(average test MSE)
 期望测试均方误差可由测试集中每个可能的$x_0$处$E(y_0 - \hat{f}(x_o))^2$的平均来计算。
+
+符号|含义
+----|---
+X   |测试样本
+D   |数据集
+$y_D$|X在数据集中的标记
+y   |x的真实标记
+f   |训练集D学得的模型
+f(x:D)|由训练集D学得的模型f对x的预测输出
+$\overline{f}(x)$|模型f对x的期望预测输出
+
+对算法的期望泛化误差进行分解：
+![Markdown](http://i2.tiimg.com/611786/1b5fe6c72bf4f931.jpg)
 
 　　为使期望测试误差达到最小，需要选择一种统计学习方法使方差和偏差同时达到最小。
 　　方差：代表的是用一个不同的训练数据集估计f时，估计函数的改变量。如果一个模型有较大的方差，那么训练数据集微小的变化则会导致$\hat{f}$较大的改变。一般来说，光滑度越高的统计模型有更高的方差。
@@ -332,12 +345,12 @@ dim(A)#输出一个矩阵的行数和列数
 read.table()函数是最基本的方法之一，将数据从文本文件加载到R
 write.table()函数可输出数据
 ```{r}
-Auto <- read.table("E:\\tjxxdljyRyy\\data\\Auto.data")
+Auto <- read.table("E:\\319\\tjxxdljyRyy\\data\\Auto.data")
 fix(Auto)
-Auto <- read.table("E:\\tjxxdljyRyy\\data\\Auto.data", header = T, na.strings = "?")
+Auto <- read.table("E:\\319\\tjxxdljyRyy\\data\\Auto.data", header = T, na.strings = "?")
 #header = T ,告知R，文件的第一行包含变量名，na.strings告知R在扫描数据的任何位置只要遇到指定的字符特征或者一个特征集，应该在数据矩阵中对这条数据做缺失标记
 #数据被保存为一个csv文件(以“，”分隔的文件)，用read.csv()函数很容易读取
-Auto <- read.csv("E:\\tjxxdljyRyy\\data\\Auto.csv", header = T, na.strings = "?")
+Auto <- read.csv("E:\\319\\tjxxdljyRyy\\data\\Auto.csv", header = T, na.strings = "?")
 fix(Auto)
 dim(Auto)
 names(Auto)#查看该数据的变量名
@@ -362,7 +375,7 @@ hist(mpg, col = 2, breaks = 15) #breaks参数表示带宽
 pairs(Auto)
 pairs(~ mpg + displacement + horsepower + weight + acceleration, Auto)
 plot( horsepower, mpg)
-#identify(horsepower, mpg, name)  #单击一个图上的某个点将引导打印指定变量上这个点的值。右击这个图将退出identify ()函数当(第一个)鼠标按钮被按下时，identify读取图形指针的位置。然后搜索给定的x和y坐标，寻找最接近指针的点。如果这个点足够接近指针，它的索引将作为调用值的一部分返回 
+identify(horsepower, mpg, name)  #单击一个图上的某个点将引导打印指定变量上这个点的值。右击这个图将退出identify ()函数当(第一个)鼠标按钮被按下时，identify读取图形指针的位置。然后搜索给定的x和y坐标，寻找最接近指针的点。如果这个点足够接近指针，它的索引将作为调用值的一部分返回 
 summary(Auto)   #数值汇总
 summary(mpg)
 ```
