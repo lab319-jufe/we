@@ -1,0 +1,260 @@
+---
+title: "resampling method"
+author: "张志伟2019级"
+output: html_document
+
+
+---
+
+# 第五章 重抽样
+
+\
+
+* 通过反复从训练集中抽取样本，然后对每一个样本重新拟合一个模型。
+
+* 最常用的两种重抽样：交叉验证法和验证集法。
+
+* 交叉验证法可以用来估计一种指定的统计学习方法的测试误差,或者为这种方法选择合适的光滑度。
+
+* 自助法常用于为一个参数估计或一个指定的统计方法提供关于准确度的测量。
+
+\
+
+## 5.1 交叉验证法
+
+\
+
+* 测试误差和训练误差之间存在区别,训练误差可能会低估测试误差，所以不能直接用训练误差代替测试误差。
+
+\
+
+### 5.1.1 验证集方法
+
+\
+
+1. 原理：首先随机的将观测集分为两部分，一个为训练集，另一个为测试集。然后在训练集上拟合模,再用拟合好的模型在测试集上预测响应变量的值，最后计算均方误差。
+
+![](http://i1.fuimg.com/611786/a14325a0deeb1f66.png)
+
+![](http://i1.fuimg.com/611786/c409261557a6f639.png)
+
+\
+
+2. 缺陷：
+* 测试错误率的验证法估计的波动很大；
+* 拟合模型只用了一部分数据,意味着验证集错误率可能会高估在整个数据集上拟合模型所得到的测试错误率
+
+```{r,echo=TRUE,warning=FALSE}
+library(ISLR)
+set.seed(1)
+train = sample(392,196)
+attach(Auto)
+lm.fit1 = lm(mpg~horsepower,data = Auto,subset = train)
+mean((mpg-predict(lm.fit1,Auto))[-train]^2)
+lm.fit2 = lm(mpg~poly(horsepower,2),data = Auto,subset = train)
+mean((mpg-predict(lm.fit2,Auto))[-train]^2)
+lm.fit3 = lm(mpg~poly(horsepower,3),data = Auto,subset = train)
+mean((mpg-predict(lm.fit3,Auto))[-train]^2)
+set.seed(2)
+print("改变训练集之后")
+train = sample(392,196)
+lm.fit1 = lm(mpg~horsepower,data = Auto,subset = train)
+mean((mpg-predict(lm.fit1,Auto))[-train]^2)
+lm.fit2 = lm(mpg~poly(horsepower,2),data = Auto,subset = train)
+mean((mpg-predict(lm.fit2,Auto))[-train]^2)
+lm.fit3 = lm(mpg~poly(horsepower,3),data = Auto,subset = train)
+mean((mpg-predict(lm.fit3,Auto))[-train]^2)
+```
+
+
+### 5.1.2 留一交叉验证法
+
+\
+
+1. 原理：
+
+* 首先将一个单独的观测($x_1$,$y_1$)作为验证集，剩下的观测$\{(x_2,y_2),\dots,(x_n,y_n)\}$组成训练集。
+
+* 然后在n-1个训练观测上拟合模型，再用拟合好的模型根据$x_1$预测$\hat y_1$,得到$MES_ \ = \ (y_1-\hat y_1)^2$,重复这个步骤，得到$MES_2, \ \dots, \ MSE_n$
+
+* 最后得到用留一交叉验证法的CV估计：$CV_{(n)} = \frac {1}{n}\sum\limits_{i=1}^nMSE_i$
+
+![](http://i1.fuimg.com/611786/0f315f50339579b9.png)
+
+![](http://i1.fuimg.com/611786/26b39b3d0f32d583.png)
+
+2. 优点：
+* 拟合模型用了n-1个数据,观测数几乎于整个数据集中的数据量相等,因此留一交叉验证法比验证集法更不容易高估测试错误率。
+* 留一交叉验证法的CV估计不存在波动；
+
+\
+
+3. 缺点：计算量大。(特例:用最小二乘法来拟合线性或者多项式回归模型时,LOOCV所花费的时间将神奇地被缩减至与只拟合一个模型相同,此时测试均方误差为:$CV_n = \frac {1}{n}\sum\limits_{i=1}^n(\frac{y_i-\hat y_i}{1-h_i})^2$)
+
+```{r,echo=TRUE,warning=FALSE}
+library(boot)
+glm.fit = glm(mpg~horsepower,data = Auto)
+cv.err=cv.glm(Auto,glm.fit)
+cv.err$delta
+
+cv.error = rep(0,5)
+for (i in 1:5) {
+  glm.fit = glm(mpg~poly(horsepower,i),data = Auto)
+  cv.error[i]=cv.glm(Auto,glm.fit)$delta[1]
+}
+cv.error
+```
+
+
+### 5.1.3 k折交叉验证法
+
+1 原理：
+
+* 首先将观测集随机分为K个大小基本一致的折。
+
+* 然后将一个折作为验证集，在剩下的k-1折组成训练集上拟合模型，计算$MSE_1$
+
+* 重复这个步骤K次,得到$MES_2, \ \dots, \ MSE_n$
+
+* 最后得到用K折交叉验证法的CV：$CV_{(K)} = \frac {1}{k}\sum\limits_{i=1}^kMSE_i$
+
+![](http://i1.fuimg.com/611786/302ce8ef4e751458.png)
+
+2. 优点
+* 相比留一交叉验证法，计算量小
+* 比用验证集方法所得到的测试误差波动要小
+
+\
+
+3. 使用交叉验证法时,其目的可能是向评价某一模型在独立数据运用上的表现，在这种情况下，感兴趣的是测试误差的估计精度。而在其他一些情况，可能是对测试误差曲线的最小值点的位置感兴趣，如对某一统计方法在不同光滑度水平使用交叉验证。
+
+![](http://i1.fuimg.com/611786/034f190534ab4c9a.png)
+
+```{r,echo=TRUE,warning=FALSE}
+set.seed(17)
+cv.error.10=rep(0,10)
+for (i in 1:10) {
+  glm.fit = glm(mpg~poly(horsepower,i),data = Auto)
+  cv.error.10[i]=cv.glm(Auto,glm.fit,K=10)$delta[1]#K要大写,delta向量中两个指是不一样的
+}
+#cv.error.10
+```
+
+
+### 5.1.4 K折交叉验证的偏差-方差权衡
+
+* 当k < n时，K折CV不仅比LOOCV的计算量要小，而且对测试误差的估计更精确，这里涉及方差-偏差权衡问题
+
+* 在LOOCV中，训练集为n-1;而在K折CV中，训练集为(k-1)n/,比n-1要小。所以LOOCV方法估计的测试误差的偏差要小于K折CV估计的。
+
+* 在LOOCV中，测试误差是平均n个拟合模型的结果，n个拟合模型所使用的训练集几乎一样。而在K折CV中，K个拟合模型所使用的训练集重叠部分相对较小，所以测试误差是平均K个相关性较小的拟合模型的结果。因为高度相关的量的均值要比相关性相对较小的量的均值波动更大，所以用LOOCV法得到的测试误差的方差要比K折CV的大
+
+* 总之，在选择K时要考虑到方差-偏差权衡问题。一般K为5或10，此时测试误差的估计不会有过大的偏差或方差。
+
+
+### 5.1.5 交叉验证法在分类问题中的应用
+
+* 在响应变量为定性变量的背景下,LOOCV法的测试误差为：$CV_{(n)} \ = \ \frac{1}{n}\sum\limits_{i=1}^nErr_i$, $Err_i=I(y_i\not = \ \hat y_i)$
+
+
+## 5.2 自助法
+
+* 可以衡量一个指定的估计量或统计学习方法提供关于准确度的测量
+
+$$
+\begin{aligned}
+\alpha \ = \ \frac{\sigma_Y^2-\sigma_{XY}}{\sigma_X^2+\sigma_Y^2-2\sigma_{XY}}
+\end{aligned}
+$$
+$$
+\begin{aligned}
+\hat \alpha \ = \ \frac{\hat \sigma_Y^2-\hat \sigma_{XY}}{\hat \sigma_X^2+\hat \sigma_Y^2-2\hat \sigma_{XY}}
+\end{aligned}
+$$
+
+![](http://i1.fuimg.com/611786/558e4b495d264a50.png)
+
+
+
+自助法估计的标准误差：$SE_\beta(\hat \alpha) \ = \ \sqrt{\frac{1}{B-1}\sum\limits_{i=1}^B(\hat \alpha^{*r}-\frac{1}{B}\sum \limits_{i=1}^B\hat \alpha^{*r^{'}})}$
+
+
+![](http://i1.fuimg.com/611786/5393437ea6ef1b9e.png)
+ 
+```{r,echo=TRUE,warning=FALSE}
+#估计一个感兴趣的统计量的精度
+alpha.fn = function(data,index){
+  X = data$X[index]
+  Y = data$Y[index]
+  return((var(Y)-cov(X,Y))/(var(X)+var(Y)-2*cov(X,Y)))
+}
+alpha.fn(Portfolio,1:100)
+set.seed(1)
+alpha.fn(Portfolio,sample(100,100,replace = T))
+boot(Portfolio,alpha.fn,R=1000)
+#估计线性回归模型的精度
+boot.fn =  function(data,index) return(coef(lm(mpg~horsepower,data=data,subset = index)))
+boot.fn(Auto,1:392)
+boot.fn(Auto,sample(392,392,replace = T))
+boot.fn(Auto,sample(392,392,replace = T))
+boot(Auto,boot.fn,1000)
+summary(lm(mpg~horsepower,data = Auto))$coef
+boot.fn =  function(data,index) return(coef(lm(mpg~horsepower+I(horsepower^2),data=data,subset = index)))
+boot(Auto,boot.fn,1000)
+summary(lm(mpg~horsepower+I(horsepower^2),data = Auto))$coef
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
