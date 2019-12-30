@@ -1,0 +1,645 @@
+---
+title: "数据概要"
+author: "TL"
+date: "2019/11/12"
+output: 
+  html_document: 
+    number_sections: yes
+    toc: yes
+---
+```{r echo=F,warning=FALSE}
+alldata <-read.csv("\\\\TL-LAPTOP\\MyFiles\\华创杯\\All_Data_Readable(1).csv")
+library(stringr)
+source('\\\\Tl-laptop\\MyFiles\\华创杯\\prop.R',encoding = 'utf8')
+source('\\\\Tl-laptop\\MyFiles\\华创杯\\source.R',encoding = 'utf8')
+```
+
+
+```{r,echo=F,warning=FALSE}
+##年龄数据合并
+age<-c(alldata$a11,alldata$a12,alldata$a13,alldata$a14,alldata$a15,alldata$a16,alldata$a17,alldata$a18)
+middleage<-summary(age)[[3]]##中位数
+##家庭人口数
+renkousum<-rep(0,nrow(alldata))
+for (i in 1:nrow(alldata)){
+  renkousum[i]<-sum(!is.na(alldata$a21[i])==TRUE,!is.na(alldata$a22[i])==TRUE,!is.na(alldata$a23[i])==TRUE,!is.na(alldata$a24[i])==TRUE,!is.na(alldata$a25[i])==TRUE,!is.na(alldata$a26[i])==TRUE,!is.na(alldata$a27[i])==TRUE,!is.na(alldata$a28[i])==TRUE)
+}
+alldata<-cbind(alldata,renkousum)
+renkou1<-round(sum(renkousum==1)/nrow(alldata),4)*100
+renkou2<-round(sum(renkousum==2)/nrow(alldata),4)*100
+renkou3<-round(sum(renkousum==3)/nrow(alldata),4)*100
+renkou4<-round(sum(renkousum==4)/nrow(alldata),4)*100
+renkou5<-round(sum(renkousum==5)/nrow(alldata),4)*100
+renkou6<-round(sum(renkousum==6)/nrow(alldata),4)*100
+renkou7<-round(sum(renkousum==7)/nrow(alldata),4)*100
+renkou8<-round(sum(renkousum==8)/nrow(alldata),4)*100
+
+##实际在家居住关系
+options(stringsAsFactors = FALSE)
+red<-data.frame(paste0(alldata$a21,alldata$a41),paste0(alldata$a22,alldata$a42),paste0(alldata$a23,alldata$a43),paste0(alldata$a24,alldata$a44),paste0(alldata$a25,alldata$a45),paste0(alldata$a26,alldata$a46),paste0(alldata$a27,alldata$a47),paste0(alldata$a28,alldata$a48))
+colnames(red)<-c("a21","a22","a23","a24","a25","a26","a27","a28")
+
+relation <- rep(NA,nrow(alldata))
+
+for (k in 1 : nrow(red)){
+  if(sum(str_detect(red[k,],'重孙子1|重孙女1|重孙子是|重孙女是'))>0){
+    relation[k] <- '四世同堂' 
+  }else if(sum(str_detect(red[k,],'孙子1|孙女1|孙子是|孙女是'))>0){
+    relation[k] <- '三世同堂'
+  }else if(sum(str_detect(red[k,],'儿子1|女儿1|儿子是|女儿是'))>0){
+    relation[k] <- '二世同堂'
+  }else if(sum(str_detect(red[k,],'本人1|本人是'))>0){
+    relation[k] <- '一代人独住'
+  }else{
+    relation[k] <- '无人在家居住'
+  }  
+}
+alldata<-cbind(alldata,relation)
+
+actrelation0<-round(sum(alldata$relation=="无人在家居住")/nrow(alldata),4)*100
+actrelation1<-round(sum(alldata$relation=="一代人独住")/nrow(alldata),4)*100
+actrelation2<-round(sum(alldata$relation=="二世同堂")/nrow(alldata),4)*100
+actrelation3<-round(sum(alldata$relation=="三世同堂")/nrow(alldata),4)*100
+actrelation4<-round(sum(alldata$relation=="四世同堂")/nrow(alldata),4)*100
+
+
+##实际居住人口
+actrenkou<-rep(0,nrow(alldata))
+for (i in 1:nrow(alldata)){
+  actrenkou[i]<-sum(alldata$a41[i]=="是",alldata$a41[i]=="1",alldata$a42[i]=="是",alldata$a42[i]=="1",alldata$a43[i]=="是",alldata$a43[i]=="1",alldata$a44[i]=="是",alldata$a44[i]=="1",alldata$a45[i]=="是",alldata$a45[i]=="1",alldata$a46[i]=="是",alldata$a46[i]=="1",alldata$a47[i]=="是",alldata$a47[i]=="1",alldata$a48[i]=="是",alldata$a48[i]=="1",na.rm=T)
+}
+alldata<-cbind(alldata,actrenkou)
+act0<-round(sum(actrenkou==0)/nrow(alldata),4)*100
+act1<-round(sum(actrenkou==1)/nrow(alldata),4)*100
+act2<-round(sum(actrenkou==2)/nrow(alldata),4)*100
+act3<-round(sum(actrenkou==3)/nrow(alldata),4)*100
+act4<-round(sum(actrenkou==4)/nrow(alldata),4)*100
+act5<-round(sum(actrenkou==5)/nrow(alldata),4)*100
+act6<-round(sum(actrenkou==6)/nrow(alldata),4)*100
+act7<-round(sum(actrenkou==7)/nrow(alldata),4)*100
+act8<-round(sum(actrenkou==8)/nrow(alldata),4)*100
+
+##家庭最高文化水平
+education<-rep(0,nrow(alldata))
+for (k in 1:nrow(alldata)){
+  education[k]<-max(alldata$a31[k],alldata$a32[k],alldata$a33[k],alldata$a34[k],alldata$a35[k],alldata$a36[k],alldata$a37[k],alldata$a38[k],na.rm=T)
+}
+
+##是否为贫困户、低保、五保
+pinkun<-sum(alldata$a6=="是",na.rm=T)
+dibao <- data.frame(apply(alldata[paste0('d1',1:8)],2,paste0))
+di <- rep(NA,nrow(alldata))
+for (k in 1 : nrow(alldata)){
+    if(sum(str_detect(dibao[k,],'1'))>0){
+      di[k] <- '低保户' 
+    }
+}
+
+wubao <- data.frame(apply(alldata[paste0('d4',1:8)],2,paste0))
+wu <- rep(NA,nrow(alldata))
+for (k in 1 : nrow(alldata)){
+    if(sum(str_detect(wubao[k,],'1'))>0){
+      wu[k] <- '五保户' 
+    }
+}
+alldata<-cbind(alldata,di,wu)
+
+```
+
+# 调查数据概要
+  本次调查以鄱阳县的农村居民作为调查对象，用PPS抽样法抽取了鄱阳县的15个自然村，确定为本次的调查地点。我们在各个村用系统抽样的方法抽取样本后，逐户走访，当面发放问卷收集数据，经过为期15天的下乡调查，一共发放500份问卷，回收问卷413份，由于存在空户、拒访或各种原因中断问卷调查的情况，有效问卷326份。
+  在问卷中，我们根据获得感的测量，设置了一系列和人民群众生产生活息息相关的指标，主要分为家庭基本信息、基本生活情况、住房、收入、就业、医疗、生活环境、教育、基础设施九部分。
+  
+## 受访者家庭基本信息
+
+  本次调查中，将家庭成员定义为常年一起居住的家人，以及外出打工但在外未组建独立家庭且过年过节定期回来的亲人。我们共走访了`r nrow(alldata)`户家庭，其中，有`r pinkun`户贫困户，`r sum(alldata$di=="低保户",na.rm=T)`户低保户，`r sum(alldata$wu=="五保户",na.rm=T)`户五保户。受访家庭的成员年龄中位数为`r middleage`岁，`r round(table(education)[[1]]/nrow(alldata),4)*100`%的家庭中无人识字；`r round((table(education)[[2]]+table(education)[[3]])/nrow(alldata),4)*100`%的家庭中有人识字，但文化水平仍偏低，在小学以下；`r round(table(education)[[4]]/nrow(alldata),4)*100`%的家庭最高学历为初中；`r round(table(education)[[5]]/nrow(alldata),4)*100`%的家庭最高学历为高中；`r round(table(education)[[6]]/nrow(alldata),4)*100`%的家庭文化水平相对较高，家中有人读过大学或大专。
+  `r sum(alldata$关系=="一代人独住",na.rm=T)`户是家里只有一代人，`r sum(alldata$关系=="二世同堂",na.rm=T)`户是二世同堂，`r sum(alldata$关系=="三世同堂",na.rm=T)`户是三世同堂，`r sum(alldata$关系=="四世同堂",na.rm=T)`户是四世同堂。其中，`r renkou1`%受访者家中只有一个人，`r renkou2+renkou3+renkou4`%受访者家中有二到四人，`r renkou5+renkou6+renkou7+renkou8`%受访者家中有五人。从实际在家居住的人口看，`r sum(alldata$relation=="无人在家居住",na.rm=T)`户平时家中无人居住，只有过年过节才回家团聚，`r sum(alldata$relation=="一代人独住",na.rm=T)`户只有一代人实际在家居住，`r sum(alldata$relation=="二世同堂",na.rm=T)`户有两代人实际在家居住，`r sum(alldata$relation=="三世同堂",na.rm=T)`户有三代人实际在家居住，`r sum(alldata$relation=="四世同堂",na.rm=T)`户有四代人实际在家居住。其中，`r act1`%受访者常年一个人独居，`r act2+act3+act4`%受访者家中有二到四个人实际在家生活，`r act5+act6+act7+act8`%受访者家庭实际一起生活的人数在五人以上。
+    
+
+
+## 调查对象生活情况
+
+```{r echo=F,warning=FALSE} 
+alldata$b1[alldata$b1>50000]<-NA ##清除异常值
+water<-as.numeric(element(alldata$b6家庭饮用水来源))
+zhi<-as.numeric(element(alldata$b7))
+queshui<-as.numeric(element(alldata$b8))
+
+```
+  
+  在基本生活情况方面，受访户每月买菜、肉、水果等食物平均花费`r summary(alldata$b1,na.rm=T)[[4]]`元，`r round(sum(alldata$b5=="想吃随时能吃",na.rm=T)/nrow(alldata),4)*100`%家庭想吃随时能吃肉类、蛋类、奶制品、豆制品等，手头比较富裕，不仅能吃得饱还能吃得好，`r round(sum(alldata$b5=="因吃不起从来不吃",na.rm=T)/nrow(alldata),4)*100`%家庭还存在生活较困难，无法正常地摄入蛋白质。
+  `r round(queshui[3],4)*100`%家庭常年不缺水，`r round(water[11],4)*100`%家庭能使用上自来水，`r round(zhi[9],4)*100`%家庭的水质常年安全。
+  `r sum(alldata$c1=="是",na.rm=T)`户受访户现在居住的房屋是自己的，`r sum(alldata$c3==1,na.rm=T)`户的房屋为一层，占`r round(sum(alldata$c3==1,na.rm=T)/nrow(alldata),4)*100`%，`r round(sum(alldata$c4>=100,na.rm = T)/nrow(alldata),4)*100 ` %的房屋面积在100平米以上。`r round(sum(alldata$c5没有住房困难情况=="没有上述困难情况",na.rm=T)/nrow(alldata),4)*100`%的家庭不存在住房面积相对居住人数较小导致的住房困难情况。
+  `r round(as.numeric(element(alldata$c6)[5]),4)*100`%的房屋是砖混结构，`r round(as.numeric(element(alldata$c6)[7]),4)*100`%的房屋是砖木结构，`r round(as.numeric(element(alldata$c6)[3]),4)*100`%的房屋是纯木结构。在房屋的墙面装修方面，`r sum(alldata$c7=="红砖",na.rm=T)`户房屋墙面是裸露的红砖，未进行任何装饰，占`r round(sum(alldata$c7=="红砖",na.rm=T)/nrow(alldata),4)*100`%；`r sum(alldata$c7=="水泥",na.rm=T)`户房屋墙面刷了水泥，占`r round(sum(alldata$c7=="水泥",na.rm=T)/nrow(alldata),4)*100`%；`r sum(alldata$c7=="刷白",na.rm=T)`户房屋墙面进行过粉刷，占`r round(sum(alldata$c7=="刷白",na.rm=T)/nrow(alldata),4)*100`%；`r sum(alldata$c7=="刷墙漆",na.rm=T)`户房屋墙面在粉刷的基础上，还用墙漆进行了装饰，占`r round(sum(alldata$c7=="刷墙漆",na.rm=T)/nrow(alldata),4)*100`%；`r sum(alldata$c7=="瓷砖",na.rm=T)`户房屋墙面贴了瓷砖，占`r round(sum(alldata$c7=="瓷砖",na.rm=T)/nrow(alldata),4)*100`%；`r sum(alldata$c7=="木材",na.rm=T)`户房屋是木制墙面，占`r round(sum(alldata$c7=="木材",na.rm=T)/nrow(alldata),4)*100`%。在房屋客厅的地面装修方面，`r sum(alldata$c8=="泥土",na.rm=T)`户是泥土地面，占`r round(sum(alldata$c8=="泥土",na.rm=T)/nrow(alldata),4)*100`%；`r sum(alldata$c8=="水磨石",na.rm=T)`户是水磨石地面，占`r round(sum(alldata$c8=="水磨石",na.rm=T)/nrow(alldata),4)*100`%；`r sum(alldata$c8=="水泥",na.rm=T)`户是水泥地面，占`r round(sum(alldata$c8=="水泥",na.rm=T)/nrow(alldata),4)*100`%；`r sum(alldata$c8=="瓷砖",na.rm=T)`户客厅地面铺了瓷砖，占`r round(sum(alldata$c8=="瓷砖",na.rm=T)/nrow(alldata),4)*100`%；`r sum(alldata$c8=="木地板",na.rm=T)`户客厅地面铺了木制地板，占`r round(sum(alldata$c8=="木地板",na.rm=T)/nrow(alldata),4)*100`%。`r sum(alldata$c9=="是",na.rm=T)`户受访户家里的客厅有沙发和茶几。
+  从受访户对耐用消费品的获得难易程度来看，手机、电视、冰箱最容易获得，洗衣机、空调、电动车、摩托车其次，电脑、家用车最难获得。
+
+
+
+## 调查对象收入水平
+```{r echo=F,warning=FALSE}
+##经营性收入
+alldata$d06[which(alldata$d06==-1)] <- NA
+alldata$d010[which(alldata$d06==-1)] <- NA
+alldata$d014[which(alldata$d06==-1)] <- NA
+alldata[which(alldata$b2=='否'|alldata$b4=='全部转租'),]$d06 <- 0
+alldata[which(alldata$b2=='否'|alldata$b4=='全部转租'),]$d010 <- 0
+alldata[which(alldata$d08=='否'),]$d010 <- 0
+alldata[which(alldata$d012=='否'),]$d014 <- 0
+income1  <- rep(NA,nrow(alldata))
+for(i in 1:nrow(alldata)){
+  if(is.na(alldata$d06[i])|is.na(alldata$d010[i])|is.na(alldata$d014[i])){
+    income1[i] <- NA
+  }else{
+    income1[i] <- sum(alldata$d06[i],alldata$d010[i],alldata$d014[i],na.rm = T)
+  }
+}
+jingincome <- summary1(income1)
+jingincome1 <- jingincome[1]#均值
+jingincome2 <- jingincome[2]#Q1
+jingincome3 <- jingincome[3]#Q2
+jingincome4 <- jingincome[4]#Q3
+##工资性收入
+tem<-c(paste0('e10',1:8))
+wage<-rep(0,nrow(alldata))
+for (i in 1:nrow(alldata)){
+  wage[i]<-sum(alldata[tem][i,],na.rm=T)
+}
+wageincome<-summary1(wage)
+wage1 <- wageincome[1]#均值
+wage2 <- wageincome[2]#Q1
+wage3 <- wageincome[3]#Q2
+wage4 <- wageincome[4]#Q3
+##财产性收入
+fincome<-summary1(alldata$d6)
+fincome1 <- fincome[1]#均值
+fincome2 <- fincome[2]#Q1
+fincome3 <- fincome[3]#Q2
+fincome4 <- fincome[4]#Q3
+##转移性收入
+zwage<-rep(0,nrow(alldata))
+for (i in 1:nrow(alldata)){
+  zwage[i]<-sum(alldata$d7[i],as.numeric(alldata$d311b[i]),as.numeric(alldata$d312b[i]),as.numeric(alldata$d313b[i]),na.rm=T)
+}
+zincome<-summary1(zwage)
+zincome1 <- zincome[1]#均值
+zincome2 <- zincome[2]#Q1
+zincome3 <- zincome[3]#Q2
+zincome4 <- zincome[4]#Q3
+```
+
+  受访家庭的经营性收入均值为`r jingincome1`，25%的受访户人均收入大于`r jingincome4`元，50%的受访户人均收入大于`r jingincome3`元，25%的受访户人均收入小于`r jingincome2`元；工资性收入均值为`r wage1`，25%的受访户人均收入大于`r wage4`元，50%的受访户人均收入大于`r wage3`元，25%的受访户人均收入小于`r wage2`元；财产性收入均值为`r fincome1`，25%的受访户人均收入大于`r fincome4`元，50%的受访户人均收入大于`r fincome3`元，25%的受访户人均收入小于`r fincome2`元；转移性收入均值为`r zincome1`，25%的受访户人均收入大于`r zincome4`元，50%的受访户人均收入大于`r zincome3`元，25%的受访户人均收入小于`r zincome2`元。
+
+## 家庭实际居住人口的收入水平
+```{r echo=F,warning=FALSE}
+#工资性收入
+# gong1<-c(paste0('a4',1:8),paste0('e10',1:8))
+# wag<-alldata[gong1]
+# wag1<-wag[,1:8]
+# wae<-alldata[paste0('a4',1:8)]
+# for (i in 1:nrow(wae)){
+#   for (j in 1:ncol(wae)){
+#     wae[i,j]<-0
+#   }
+# }
+# for (i in 1:nrow(wag)){
+#   for (j in 1:ncol(wag)){
+#     if (is.na(wag[i,j])==TRUE){
+#        wag[i,j]<-0
+#     }
+#   }
+# }
+# 
+# 
+# for (i in 1:nrow(wae)){
+#   for (j in 1:ncol(wae)){
+#     if (wag[i,j]=="1"){
+#       wae[i,j]<-wag[i,j+8]
+#       }
+#     }
+# }
+# 
+# write.csv(wae,file="D:\\MyFiles\\华创杯\\wageshiji.csv",sep="")
+wae<-read.csv("D:\\MyFiles\\华创杯\\wageshiji.csv")
+wage0<-rep(0,nrow(alldata))
+for (i in 1:nrow(alldata)){
+  wage0[i]<-as.numeric(wae$a41[i])+as.numeric(wae$a42[i])+as.numeric(wae$a43[i])+as.numeric(wae$a44[i])+as.numeric(wae$a45[i])+as.numeric(wae$a46[i])+as.numeric(wae$a47[i])+as.numeric(wae$a48[i])
+}
+wagincome<-summary1(wage0)
+wage10 <- wagincome[1]#均值
+wage20 <- wagincome[2]#Q1
+wage30 <- wagincome[3]#Q2
+wage40 <- wagincome[4]#Q3
+```
+ 
+ 
+  单从实际在家居住的人来看，工资性收入均值为`r wage10`，25%的受访户人均收入大于`r wage40`元，50%的受访户人均收入大于`r wage30`元，25%的受访户人均收入小于`r wage20`元。
+
+
+## 调查家庭就业情况
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+dd <- c(paste0('e1',1:8),paste0('e2',1:8))#所有打工人数
+
+pop0 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop0[i] <- sum((apply(alldata[dd],2,as.numeric)%>%cbind()==1)[i,],na.rm = T)
+}
+
+alldata$打工人数 <- pop0
+stworksum0 <- table(pop0)
+zong <- sum(stworksum0[[1]],stworksum0[[2]],stworksum0[[3]],stworksum0[[4]],stworksum0[[5]],stworksum0[[6]],stworksum0[[7]])
+
+
+dd1 <- paste0('e1',1:8) #县外打工
+
+pop1 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop1[i] <- sum((apply(alldata[dd1],2,as.numeric)%>%cbind()==1)[i,],na.rm = T)
+}
+
+alldata$县外打工人数 <- pop1
+wes <- sum(alldata$县外打工人数)
+stworksum1 <- table(pop1)
+
+
+dd2 <- paste0('e2',1:8) #县内打工
+
+pop2 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop2[i] <- sum((apply(alldata[dd2],2,as.numeric)%>%cbind()==1)[i,],na.rm = T)
+}
+
+alldata$县内打工人数 <- pop2
+stworksum2 <- table(pop2)
+
+
+
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+# 一共多少人
+renkousum<-rep(0,nrow(alldata))
+for (i in 1:nrow(alldata)){
+  renkousum[i]<-sum(!is.na(alldata$a21[i])==TRUE,!is.na(alldata$a22[i])==TRUE,!is.na(alldata$a23[i])==TRUE,!is.na(alldata$a24[i])==TRUE,!is.na(alldata$a25[i])==TRUE,!is.na(alldata$a26[i])==TRUE,!is.na(alldata$a27[i])==TRUE,!is.na(alldata$a28[i])==TRUE)
+}
+
+zongrenkou <- sum(renkousum)
+```
+
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+dd <- paste0("e9",c(1:8))
+
+for (i in dd){
+  alldata[[i]][which(alldata[i]=='不安全'|alldata[i]=='高污染'|alldata[i]=='本人受伤')] <- 2
+}
+
+for (i in dd){
+  alldata[[i]][which(alldata[i]=='安全'|alldata[i]=="安全·")] <- 1
+}
+
+pop1 <- rep(0,nrow(alldata))
+
+for (i in 1:nrow(alldata)){
+  pop1[i] <- sum((apply(alldata[dd],2,as.numeric)%>%cbind()==1)[i,],na.rm = T)
+}
+
+alldata$外出务工环境安全人数 <- pop1
+
+workevsum2 <- table(pop1)
+
+anzong <- sum(pop1)
+anquanzong <- round(anzong/zongrenkou,4)*100
+
+
+
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+xianwai <- alldata[alldata$县外打工人数!=0,]
+xianwaiaq <- sum(xianwai$外出务工环境安全人数)
+xianwaiz <- sum(xianwai$打工人数)
+wb <- round((xianwaiaq/xianwaiz)*100,2)
+
+
+xiannei <- alldata[alldata$县内打工人数!=0,]
+xianneiaq <- sum(xiannei$外出务工环境安全人数)
+xianneiz <- sum(xiannei$打工人数)
+nb <- round((xianneiaq/xianneiz)*100,2)
+```
+
+
+
+在务工情况方面，有`r zong - stworksum0[[1]]`户家庭有人外出务工，占所有受访家庭的`r round(((zong - stworksum0[[1]])/zong)*100,2)`%，其中，家里有2人外出务工的占比最高为`r round((stworksum0[[3]]/zong)*100,2)`%；有`r zong-stworksum1[[1]]`户有人在县外务工，占所有受访家庭的`r round(((zong-stworksum1[[1]])/zong)*100,2)`%；有`r zong-stworksum2[[1]]`户有人在县内务工,占所有受访家庭的`r round(((zong-stworksum2[[1]])/zong)*100,2)`%。
+
+在环境安全方面,`r anquanzong`%的农户工作环境安全，县内工作环境安全农户占比`r nb`%，县外工作环境安全农户占比`r wb`%。
+  
+
+
+## 调查对象医疗水平
+```{r echo=F,warning=FALSE}
+##医保覆盖
+hos<-c(paste0('f1',1:8))
+hosi<-alldata[hos]
+hosi$f11[hosi$f11=="11"]<-1
+yibaosum<-rep(0,nrow(alldata))
+for (i in 1:nrow(alldata)){
+  yibaosum[i]<-sum(hosi$f11[i]=="1",hosi$f12[i]=="1",hosi$f13[i]=="1",hosi$f14[i]=="1",hosi$f15[i]=="1",hosi$f16[i]=="1",hosi$f17[i]=="1",hosi$f18[i]=="1",na.rm=T)
+}
+yibaofu<-round(yibaosum/renkousum,4)*100
+#yibaofu[yibaofu>100]<-0
+
+##慢性病
+man<-c(paste0('f3',1:8))
+mani<-alldata[man]
+
+mansum<-rep(0,nrow(alldata))
+for (i in 1:nrow(alldata)){
+  mansum[i]<-sum(mani$f31[i]=="1",mani$f32[i]=="1",mani$f33[i]=="1",mani$f34[i]=="1",mani$f35[i]=="1",mani$f36[i]=="1",mani$f37[i]=="1",mani$f38[i]=="1",na.rm=T)
+}
+
+##住院
+yuan<-c(paste0('f7',1:8))
+yuani<-alldata[yuan]
+
+yuansum<-rep(0,nrow(alldata))
+for (i in 1:nrow(alldata)){
+  yuansum[i]<-sum(yuani$f71[i]=="1",yuani$f72[i]=="1",yuani$f73[i]=="1",yuani$f74[i]=="1",yuani$f75[i]=="1",yuani$f76[i]=="1",yuani$f77[i]=="1",yuani$f78[i]=="1",na.rm=T)
+}
+##报销
+baoxiao<-c(paste0('f11',1:8))
+baoxiaoi<-alldata[baoxiao]
+
+baoxiaosum<-rep(0,nrow(alldata))
+for (i in 1:nrow(alldata)){
+  baoxiaosum[i]<-sum(!is.na(baoxiaoi$f111[i])==TRUE,!is.na(baoxiaoi$f112[i])==TRUE,!(baoxiaoi$f113[i])==TRUE,!is.na(baoxiaoi$f114[i])==TRUE,!is.na(baoxiaoi$f115[i])==TRUE,!is.na(baoxiaoi$f116[i])==TRUE,!is.na(baoxiaoi$f117[i])==TRUE,!is.na(baoxiaoi$f118[i])==TRUE,na.rm=T)
+}
+
+```
+  
+  受访户的医保覆盖率达到`r round(sum(yibaofu>=100,na.rm=T)/nrow(alldata),4)*100`%，`r sum(mansum!=0,na.rm=T)`户家庭有慢性病人，占比`r round(sum(mansum!=0,na.rm=T)/nrow(alldata),4)*100`%；`r sum(yuansum!=0,na.rm=T)`户家庭去年有家人因病住院，占比`r round(sum(yuansum!=0,na.rm=T)/nrow(alldata),4)*100`%，其中，`r round(sum(baoxiaosum!=0,na.rm=T)/sum(yuansum!=0,na.rm=T),4)*100`%的家庭都使用农村合作医疗报销了自己一部分的住院费。
+  
+  `r sum(alldata$f07=="立刻求医",na.rm=T)`户家庭在生病时都会立即求医，占比`r round(sum(alldata$f07=="立刻求医",na.rm=T)/nrow(alldata),4)*100`%；`r 100-(round(sum(alldata$f07=="立刻求医",na.rm=T)/nrow(alldata),4)*100)`%家庭在生病时不立即就医，其中，`r round(sum(alldata$f08=="医疗费用太贵",na.rm=T)/nrow(alldata),4)*100`%是因为医疗费用太贵，不舍得支出这笔医疗费用；`r round(sum(alldata$f08=="离意愿或其他医疗机构太远",na.rm=T)/nrow(alldata),4)*100`%是因为离意愿或其他医疗机构太远，不想这样将就着看病；`r round(sum(alldata$f08=="无人陪同去医院",na.rm=T)/nrow(alldata),4)*100`%是因为无人陪同去医院，不愿意或者没能力自己去医院看病；`r round(sum(alldata$f08=="不相信医生",na.rm=T)/nrow(alldata),4)*100`%是因为对医生不信任，认为医生的治疗没有效果；`r round(sum(alldata$f08=="觉得没必要看病，自理",na.rm=T)/nrow(alldata),4)*100`%是因为觉得没必要去医院看病，可以自理。
+  
+
+## 调查对象生活环境
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+dl <- element(alldata$g1)
+ljt <- element(alldata$g2)
+kongqi <- element(alldata$g3)
+heliu <- element(alldata$g4)
+yx <- element(alldata$g5)
+```
+
+在生活环境方面，`r as.numeric(dl[5])*100`%受访家庭家门前的道路很干净，`r as.numeric(ljt[5])*100`%受访家庭家附近有公用垃圾桶，`r as.numeric(kongqi[3])*100`%受访家庭反映村里空气没有刺鼻的味道，`r as.numeric(heliu[5])*100`%受访家庭反映村庄附近有河流，`r as.numeric(yx[5])*100`%`受访家庭反映河里有鱼虾。
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+jia1.1 <- element(alldata$i1随身财.物被偷窃)#4
+jia1.2 <- element(alldata$i1随身财.物被抢劫)#0
+jia1.3 <- element(alldata$i1被打或被威胁)#0
+jia1.4 <- element(alldata$i1家里被入室偷窃)#14
+jia1.5 <- element(alldata$i1家里被入室抢劫)#0
+jia1.6 <- element(alldata$i1其他_开放选项)#0
+jia1.7 <- element(alldata$i1其他)#0
+jia1.8 <- element(alldata$i1都没有)#281
+
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+cun1.1 <- element(alldata$i2随身财.物被偷窃)#25
+cun1.2 <- element(alldata$i2随身财.物被抢劫)#0
+cun1.3 <- element(alldata$i2被打或被威胁)#0
+cun1.4 <- element(alldata$i2家里被入室偷窃)#55
+cun1.5 <- element(alldata$i2家里被入室抢劫)#4
+cun1.6 <- element(alldata$i2其他_开放选项)#1
+cun1.7 <- element(alldata$i2其他)#1
+cun1.8 <- element(alldata$i2都没有)#215
+```
+
+在安全方面，`r round((as.numeric(jia1.8[1])/zong)*100,2)`%受访户家近一年没有被偷、被抢以及诈骗等事件发生，`r round((as.numeric(jia1.4[1])/zong)*100,2)`%受访户家近一年家里被入室偷窃；`r round((as.numeric(cun1.8[1])/zong)*100,2)`%受访户所在村子近一年没有被偷、被抢以及诈骗等事件发生，`r round((as.numeric(cun1.4[1])/zong)*100,2)`%受访户所在村子近一年有村民家里被入室偷窃，`r round((as.numeric(cun1.1[1])/zong)*100,2)`%受访户所在村子近一年
+有村民随身财物被偷窃。
+
+## 调查对象教育水平
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+##义务教育人数
+
+library(magrittr)
+dd0 <- c(paste0('h2',1:8))
+
+pop0 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop0[i] <- sum((apply(alldata[dd0],2,as.numeric)%>%cbind()==1)[i,],na.rm = T)
+}
+
+##辍学人数
+
+dd1 <- c(paste0('h3',1:8))
+
+pop1 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop1[i] <- sum((apply(alldata[dd1],2,as.numeric)%>%cbind()==1)[i,],na.rm = T)
+}
+
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+##学习成绩
+dd2 <- c(paste0('h9',1:8))
+
+pop2 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop2[i] <- sum((apply(alldata[dd2],2,as.numeric)%>%cbind()==1)[i,],na.rm = T)
+}
+```
+
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+##学杂费
+dd3 <- c(paste0('h15',1:8))
+ee<-as.matrix(alldata[dd3])
+dd31<- as.vector(ee)
+#mean(dd31,na.rm = T)
+qq<-summary(dd31)
+
+f7500<-function(vec){
+  vec<- as.numeric(vec[complete.cases(vec)])
+  e17_2<-sum(vec>=0&vec<qq[[2]],na.rm=T)
+  e17_4<-sum(vec>=qq[[2]] & vec<qq[[3]],na.rm=T)
+  e17_6<-sum(vec>=qq[[3]] & vec<qq[[5]],na.rm=T)
+  e17_8<-sum(vec>=qq[[5]],na.rm=T)
+  e17_1<-e17_2+e17_4+e17_6+e17_8
+  e17_3<-round(e17_2/e17_1,4)*100
+  e17_5<-round(e17_4/e17_1,4)*100
+  e17_7<-round(e17_6/e17_1,4)*100
+  e17_9<-round(e17_8/e17_1,4)*100
+  line<-c(e17_3,e17_5,e17_7,e17_9)
+  line<-round(line,3)
+  return(line)
+}  
+#f7500(dd31)
+
+```
+
+
+在教育水平方面，有`r round(sum(pop0!=0)/nrow(alldata)*100,2)`%户家庭中有义务教育阶段的孩子，其中，义务教育阶段学生共有`r sum(pop0)`人，辍学人数有`r sum(pop1)`人，辍学率为`r round(sum(pop1)/sum(pop0)*100,2)`%。义务教育阶段学生中，学习成绩良好的有`r sum(pop2)`人，占义务教育阶段人数的`r round(sum(pop2)/sum(pop0))*100`%，平均的学杂费为`r round(mean(dd31,na.rm = T),2)`元，学杂费在0-`r qq[[2]]`元的人数占比为`r f7500(dd31)[1]`%,学杂费在`r qq[[2]]`-`r qq[[3]]`元的人数占比为`r f7500(dd31)[2]`%，学杂费在`r qq[[3]]`-`r qq[[5]]`元的人数占比为`r f7500(dd31)[3]`%，学杂费在`r qq[[5]]`元的人数占比为`r f7500(dd31)[4]`%。
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+##到县城的交通方式
+##公交出行小于60分钟
+bus60<-sum(alldata$c11=="公共汽车"&alldata$c12<=60,na.rm=T)
+bus<-sum(alldata$c11=="公共汽车",na.rm=T)
+```
+
+从被访村到县城的主要交通方式，`r round(as.numeric(element(alldata$c11)[7]),4)*100`%的受访者选择公共汽车出行，其中，`r round(bus60/bus,4)*100`%受访户到达县城只要不到一小时；`r round(as.numeric(element(alldata$c11)[5]),4)*100`%的受访者选择电动车或摩托车出行，`r round(as.numeric(element(alldata$c11)[9]),4)*100`%的受访者选择自己开汽车，`r round(as.numeric(element(alldata$c11)[3]),4)*100`%的受访者选择步行。
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+##高铁动车
+dd4 <- c(paste0('j2',1:8))
+pop4 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop4[i] <- sum((apply(alldata[dd4],2,as.numeric)%>%cbind()==1)[i,],na.rm = T)
+}
+##手机下载微信或支付宝
+dd5 <- c(paste0('j3',1:8))
+pop5 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop5[i] <- sum((apply(alldata[dd5],2,as.numeric)%>%cbind()==1)[i,],na.rm = T)
+}
+
+##总人口
+renkousum<-rep(0,nrow(alldata))
+for (i in 1:nrow(alldata)){
+  renkousum[i]<-sum(!is.na(alldata$a21[i])==TRUE,!is.na(alldata$a22[i])==TRUE,!is.na(alldata$a23[i])==TRUE,!is.na(alldata$a24[i])==TRUE,!is.na(alldata$a25[i])==TRUE,!is.na(alldata$a26[i])==TRUE,!is.na(alldata$a27[i])==TRUE,!is.na(alldata$a28[i])==TRUE)
+}
+##经常使用微信语音或视频通话
+dd6 <- c(paste0('j4',1:8))
+pop6 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop6[i] <- sum((apply(alldata[dd6],2,as.numeric)%>%cbind()==1)[i,],na.rm = T)
+}
+
+##使用支付宝或微信支付或收钱的频率
+library(stringr)
+j51<-alldata$j51
+j51 <- str_replace(j51,"2","一星期多次")
+j51 <- str_replace(j51,"一个星期多次","一星期多次")
+j51 <- str_replace(j51,"使用","从不使用")
+j51 <- str_replace(j51,"一年一次","一年多次")
+j51 <- str_replace(j51,"从不从不使用","从不使用")
+alldata$j51<-j51
+
+j52<-alldata$j52
+j52 <- str_replace(j52,"2","一星期多次")
+j52 <- str_replace(j52,"一个星期多次","一星期多次")
+j52 <- str_replace(j52,"从不使用从不","从不使用")
+j52 <- str_replace(j52,"一个月一次","一个月多次")
+alldata$j52<-j52
+
+j53<-alldata$j53
+j53 <- str_replace(j53,"1","每天")
+j53 <- str_replace(j53,"一个星期多次","一星期多次")
+j53 <- str_replace(j53,"从不使用从不","从不使用")
+j53 <- str_replace(j53,"一次多次","一个月多次")
+j53 <- str_replace(j53,"一个多月","一个月多次")
+alldata$j53<-j53
+
+
+j54<-alldata$j54
+j54 <- str_replace(j54,"一个星期多次","一星期多次")
+j54 <- str_replace(j54,"一个多月","一个月多次")
+alldata$j54<-j54
+
+dd7 <- c(paste0('j5',1:8))
+pop71 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop71[i] <- sum((apply(alldata[dd7],2,as.character)%>%cbind()=="每天")[i,],na.rm = T)
+}
+
+pop72 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop72[i] <- sum((apply(alldata[dd7],2,as.character)%>%cbind()=="一星期多次")[i,],na.rm = T)
+}
+pop73 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop73[i] <- sum((apply(alldata[dd7],2,as.character)%>%cbind()=="一个月多次")[i,],na.rm = T)
+}
+pop74 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop74[i] <- sum((apply(alldata[dd7],2,as.character)%>%cbind()=="一年多次")[i,],na.rm = T)
+}
+
+pop75 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop75[i] <- sum((apply(alldata[dd7],2,as.character)%>%cbind()=="从不使用")[i,],na.rm = T)
+}
+zong1<-sum(pop71)+sum(pop72)+sum(pop73)+sum(pop74)+sum(pop75)
+```
+
+```{r,echo=FALSE,message=FALSE,warning=FALSE}
+library(stringr)
+j61<-alldata$j61
+j61 <- str_replace(j61,"2","一星期多次")
+j61 <- str_replace(j61,"一周多次","一星期多次")
+j61 <- str_replace(j61,"从不","从不使用")
+alldata$j61<-j61
+
+j62<-alldata$j62
+j62 <- str_replace(j62,"从不","从不使用")
+alldata$j62<-j62
+
+
+
+dd8 <- c(paste0('j6',1:8))
+pop81 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop81[i] <- sum((apply(alldata[dd8],2,as.character)%>%cbind()=="每天")[i,],na.rm = T)
+}
+
+pop82 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop82[i] <- sum((apply(alldata[dd8],2,as.character)%>%cbind()=="一星期多次")[i,],na.rm = T)
+}
+pop83 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop83[i] <- sum((apply(alldata[dd8],2,as.character)%>%cbind()=="一个月多次")[i,],na.rm = T)
+}
+pop84 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop84[i] <- sum((apply(alldata[dd8],2,as.character)%>%cbind()=="一年多次")[i,],na.rm = T)
+}
+
+pop85 <- rep(0,nrow(alldata))
+
+for(i in 1:nrow(alldata)){
+  pop85[i] <- sum((apply(alldata[dd8],2,as.character)%>%cbind()=="从不使用")[i,],na.rm = T)
+}
+zong2<-sum(pop81)+sum(pop82)+sum(pop83)+sum(pop84)+sum(pop85)
+```
+
+最近一年有`r round(sum(pop4!=0)/nrow(alldata)*100,2)`%户家庭出行选择了高铁或动车，有`r round(sum(pop5!=0)/nrow(alldata)*100,2)`%户家庭下载了微信或支付宝，有`r round(sum(pop5)/sum(renkousum)*100)`%人下载了微信或支付宝，有`r round(sum(pop6)/sum(renkousum*100,2))`%经常使用微信语言或视频通话，有`r round(sum(pop71)/zong1*100,2)`%人每天使用支付宝或微信支付或收钱，有`r round(sum(pop72)/zong1*100,2)`%人一星期多次使用支付宝或微信支付或收钱，有`r round(sum(pop73)/zong1*100,2)`%人一个月多次使用支付宝或微信支付或收钱，有`r round(sum(pop74)/zong1*100,2)`%人一年多次支付宝或微信支付或收钱，有`r round(sum(pop75)/zong1*100,2)`%人从不使用支付宝或微信支付或收钱。
+
+有`r round(sum(pop81)/zong2*100,2)`%人每天网购，有`r round(sum(pop82)/zong2*100,2)`%人一星期多次网购，有`r round(sum(pop83)/zong2*100,2)`%人一个月多次网购，有`r round(sum(pop84)/zong2*100,2)`%人一年多次网购，有`r round(sum(pop85)/zong2*100,2)`%人从不使用网购。
+
+有`r  sum(alldata$j7=="是")`户（`r round(sum(alldata$j7=="是")/nrow(alldata)*100,2)`%）家庭安装了wifi。
+
+
