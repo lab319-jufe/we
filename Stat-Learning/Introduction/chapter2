@@ -1,0 +1,678 @@
+---
+title: "第二章 统计学习"
+author: "After__today"
+date: "2020/7/9"
+output: html_document
+---
+
+# 2.1 什么是统计学习
+### Case one
+
+　　受客户委托做统计咨询，为某产品的销量提升提供策略咨询建议。Advertising(广告)数据集记录了该产品在200个不同市场的销售情况，以及该产品在每个市场中3类广告媒体（TV(电视)、radio(广播)和newspaper(报纸)）的预算，如图：
+![Markdown](http://i2.tiimg.com/611786/854ce55de137dcf8.png)
+
+　　此案例的目标是开发一个基于3类广告媒体预算的精准预测销量的模型。
+
+　　在该案例中，三类广告媒体的预算为输入变量(input variable)，也称为预测
+(predictor)变量、自(independent)变量、属性(feature)变量，通常用$X$表示，用下标区分不同的变量。sales(销量)为输出变量(output variable)，也称为为晌应(response) 变量或因变量(dependent variable)，通常用$Y$表示。
+
+　　每个散点图中的蓝线为通过普通最小二乘法得到的sales的拟合线，即每条蓝线都代表一个简单的模型，可以用来预测三类广告媒体的sales。
+
+　　一般情况，假设观察到一个定量的响应变量$Y$和$p$个不同的预测变量，记为$X_1,X_2,\cdots,X_p$。假设这个$Y$和$X=(X_1,X_2,\cdots,X_p)$有一定的关系，可以表达成一个比较一般的形式：
+　　$Y = f(X) + \epsilon \tag{2.1}$
+
+　　$f$是$X_1,X_2,\cdots,X_p$的函数，它是固定的但未知，$\epsilon$是随机误差项(error term)，与$X$独立，均值为0。在这种形式下，$f$表达了$X$提供给$Y$的系统(systematic)信息。
+
+### Case two
+
+![Markdown](http://i1.fuimg.com/611786/7dba128bd185670a.png)
+　　该图表示了Income(收入)数据集中30个人的income(收入)与各自years of education(受教育年限)的关系。该图显示可以用一个人的years of education 去预测这个人的income。
+
+　　左图中的点为income观测值和30个人的years of education，右图中曲线代表真实的incom和years of education的关系，坚线代表误差项$\epsilon$。
+
+![Markdown](http://i2.tiimg.com/611786/3b66b8f3548f3651.png)
+
+　　一般而言，估计函数$f$会涉及多个输入变量，上图为income对years of education和seniority(专业资质)的函数$f$。这里$f$是一个基于观测值估计的二维曲面。
+
+　　实际上，统计学习是关于估计$f$的一系列方法。本章将介绍几个在估计$f$时所需要的关键理论概念，这些概念将用于估计$f$，同时也用于对所得估计进行评价。
+
+## 2.1.1 什么情况下需要估计$f$
+
+　　估计$f$的主要原因有两个：预测(prediction)和推断(inference)。
+
+### 预测
+
+　　许多情形下，输入集$X$是现成的，但输出$Y$是不易获得的。这时，由于误差项的均值是0，故可通过下式预测Y：
+　　$\hat{Y} = \hat{f}(X) \tag{2.2}$
+　　$\hat{f}$表示$f$的预测，$\hat{Y}$表示$Y$的预测值。在这个式子中，$\hat{f}$是黑箱(black box)，表示一般意义下，如果该黑箱能提供准确的预测$Y$，则并不十分追求$\hat{f}$的确切形式。
+
+　　$\hat{Y}$作为响应变量$Y$的预测，其精确性依赖于两个量，一个是可约误差 (reducible error)，另一个是不可约误差(irreducible error)。
+
+　　当所选的$\hat{f}$不是$f$的一个最佳估计时，对模型估计的不准确也会引起一些误差，但这个误差是可约的，因为只要选择更合适的统计学习方法去估计$f$就可能降低这种误差。
+
+　　由于$Y$还是一个关于$\epsilon$的函数。$\epsilon$是不能用$X$去预测的，因此，与$\epsilon$有关的变量也影响到预测的准确性这部分误差就被称为不可约误差。无论估计多么精确都无法减少$\epsilon$引起的误差。
+
+　　$\epsilon$包含了对预测Y有用但却不可直接观察的变量，所以该残差会大于0。
+
+　　考虑给定的估计$\hat{f}$和一组预测变量$X$，将产生预测$\hat{Y}=\hat{f}(X)$。假设$\hat{f}$和$X$是固定的，于是很容易证明：
+$$\begin{align}
+  E(Y-\hat{Y})^2 & = E[f(X) + \epsilon-\hat{f}(X)]^2 \\
+  & = E[(f(X)-\hat{f}(X))^2 + 2\epsilon \left(f(X)-\hat{f}(X) \right) + \epsilon^2] \\
+  & = E[(f(X)-\hat{f}(X))^2] + 0 + E(\epsilon^2) \\
+  & = \underbrace{[f(X)-\hat{f}(X)]^2}_{\rm 可约误差}+\underbrace{Var(\epsilon)}_{\rm 不可约误差}\tag{2.3}
+  \end{align} $$
+
+　　$E(Y-\hat{Y})^2$代表预测量和实际值$Y$的均方误差或期望平方误差值，$Var(\epsilon)$表示误差项$\epsilon$的方差。
+
+　　这本书重点关注估计$f$的方法，使$f$有最小的可约误差。需要谨记的是，不可约误差提供了$Y$预测精度的一个上界，这个上界在实践中实际上是未知的。
+
+### 推断
+
+　　很多情况下，我们对当$X_1,X_2,\cdots,X_p$变化时对$Y$产生怎样的影响比较感兴趣。估计$f$的目标不是为了预测$Y$，而是想明白$X$和$Y$的关系，需要知道$f$的具体形式。此时，可能涉及的问题如下：
+
+　　1、哪些预测变量与响应变量相关?
+
+　　2、响应变量与每个预测因子之间的关系是什么?
+
+　　3、$Y$与每个预测变量的关系是否能用一个线性方程概括，还是它们的关系需要更复杂的形式呢?
+
+　　在本书中所学习的建模例子都是预测、推断或者二者混合。
+
+## 2.1.2 如何估计$f$
+
+　　运用观测点去训练或者引导我们的方法怎样估计$f$，这些观测点称为训练数据(training data)。令$x_{ij}$表示观测点$i$的第$j$个预测变量或输入变量值，其中$i = 1,2 ,\cdots,n$和$j = 1,2,\cdots,p$。相应地，令$y_i$表示第$i$观测点的响应变量值。训练数据记作${(x_1,y_1),(x_2,y_2),\cdots,(x_n,y_n)}$，其中$x_i=(x_{i1},x_{i2},\cdots,x_{ip})$。
+
+　　目标：找到一个函数关系$\hat{f}$对任意观察点$(X,Y)$都有$\hat{Y}≈\hat{f}(x)$。一般而言，这项任务的大多数统计学习方法都可以分为两类：参数方法和非参数方法。
+
+### 参数方法
+
+　　参数方法是一种基于模型估计的两阶段方法
+
+　　（1）首先，假设函数$f$具有一定的形式或形状。一个常用的假设是假设$f$是线性的，具有如下形式：
+　　$$f(X) = \beta_0 + \beta_1X_1 + \beta_2X_2 + \cdots + \beta_pX_p \tag{2.4}$$
+　　这是线性模型(linear model)，一旦假设$f$是线性的，估计$f$的问题就被简化了。
+不必估计任意一个$p$维函数，只需估计$p+1$个系数$\beta_0,\beta_1,\cdots,\beta_p$。
+
+　　（2）一旦模型被选定后，就需要用训练数据去拟合(fit)或训练(train)模型。在(2.4)中，需要估计参数$\beta_0,\beta_1,\cdots,\beta_p$。即需要确定参数的值，满足$Y≈\beta_0+\beta_1X_1+\beta_2X_2+\cdots+\beta_pX_p$，拟合(2.4)最常用的方法称为(普通)最小二乘法(ordinary least squares)。
+
+　　基于模型的方法统称为参数法(parametric)；参数法把估计f的问题简化到一组参数。参数方法的缺陷是选定的模型并非与真正的$f$在形式上是一致的。假如我们选择的模型与真实的$f$差距太大，这样估计的$f$效果也会很差。
+
+　　此类问题的一种解决思路是尝试通过选择光滑(felexible)模型拟合很多不同形式的函数$f$。但一般来说，拟合光滑度更强的模型需要更多的参数估计。拟合复杂的模型会导致另一个被称为过拟合(overfitting)现象的出现，这表示这些模型拟合了错误或躁声(nosie)。
+
+　　基于模型的方法统称为参数法(parametric)；参数法把估计f的问题简化到一组参数。下图给出了一个参数模型的例子，其中数据来自于上图中的Income(数据)：
+
+![Markdown](http://i2.tiimg.com/611786/faeead57a303cc3a.png)
+
+　　一个线性拟合如下所示：
+$$income≈\beta_0+\beta_1 \times education + \beta_2 \times seniority$$
+
+　　显然上图中的线性拟合不够精确，真正的$f$有一定的曲率，线性拟合无法抓住这些特征，然而，线性拟合任然看起来是一个比较合理的估计，因为它把握了year of education和income之间的正相关关系，还成功捕获了seniority和income之间微弱且不易察觉的正相关关系。
+
+### 非参数方法
+
+　　非参数方法不需要对函数$f$的形式事先做出明确的假设，追求的是接近数据点的估计，估计函数在去粗和光滑处理后尽可能与更多的数据点接近。
+
+　　非参数方法较参数方法的优点在于：不限定函数$f$的具体形式，于是可能在更大的范围选择更适宜$f$形状的估计，从而规避了参数方法中所估计的$f$与真实的$f$有很大不同的问题。但有一个致命的弱点是：无法将估计$f$的问题简化到仅仅对少数参数进行估计的问题，所以为了获得对$f$的更为精确的估计，往往需要大量的观测点。
+
+　　下图表示用非参数方法对Income数据应用薄板样条(thin-plate spline)估计$f$的拟合结果，曲面是Income数据的一个光滑薄板样条拟合；各个点是观测点。
+
+![Markdown](http://i2.tiimg.com/611786/1b9390dd15c0360f.png)
+
+　　在这种情况下，非参数拟合输出了对真实$f$相当准确的一个估计。
+
+　　为拟合一个薄板样条，数据分析师必须指定一个光滑度水平中，也称柔性水平。下图就是使用一个较低的柔性水平用类似的方法拟合的薄板样条，得到一个完整地匹配了每一个观测数据的折皱不平的拟合。同时，这也是一个过拟合的例子。过拟合将产生不良影响，拟合的函数不能对新的不属于原来训练数据集的观测点给出响应变量的精准估计。
+![Markdown](http://i1.fuimg.com/611786/e2789f3f94a4787c.png)
+
+## 2.1.3 预测精度和模型解释性的权衡
+
+　　有以下几种原因导致我们会选择限定性更强的建模方式。如果建模的主旨在于推断，那么采用结构限定的模型则模型解释性比较强。相反，相当复杂的光滑模型能够产生关于$f$较为复杂的估计，但很难解释每一个单独的预测变量是如何影响响应变量的。
+
+　　下图比较了本书几种方法在柔性和解释性之间的权衡特点，一般来讲，当一种方法的柔性增强时，其解释性则减弱。
+![Markdown](http://i1.fuimg.com/611786/cb2c928cbe3f6036.png)
+
+　　综述所述，当数据分析的目标是推断时，运用简单又相对欠光滑的统计学方法具有明显的优势。然而在仅仅是对预测感兴趣时，直观上会认为光滑度更高的方法才是最优的选择，然后，更精确的预测常常是在欠光滑度的模型上取得的。欠光滑度模型乍一看上去会感觉违反直觉，可这正是其抗高光滑模型过拟合缺陷的能力所在。
+
+## 2.1.4 指导学习与无指导学习
+
+　　统计学习问题主要分为以下几种类型：指导学习(Supervised learning)、无指导学习(Unsupervised learning)、半指导学习(Semi-Supervised learning)以及强化学习(Reinforcement learning)。
+
+#### 指导学习（有监督学习）
+
+　　对每一个预测变量观测值$x_i(i=1,\,\cdots,\,n)$都有相应的响应变量的观测$y_i$。许多传统的学习方法，比如线性回归、逻辑斯谛回归(logistic regerssion)、广义可加模型(GAM)、提升方法、
+支持向量机(SVM)、神经网络(Neural Networks)等比较现代的方法，都属于指导学习范畴。
+
+#### 无指导学习（无监督学习）
+
+　　无指导学习则在一定程度上更具挑战性，只有预测变量的观测向量$x_i(i=1,\,\cdots,\,n)$,这些向量没有相应的响应变量$y_i$与之对应。对这类问题拟合线性模型是不可能的，因为缺乏响应变量用于预测。这时，建模工作在某种程度上来看仿佛是在黑暗中的摸索；这种情形就称为无指导。无指导学习包括：聚类(Clustering)分析、主成分分析(PCA)、最大期望算法(EM algorithm)等。
+
+#### 半指导学习（半监督学习）
+
+　　假设有n个观测。其中m(m<n)个观测点，可以同时观测到预测变量和响应变量。而对于其余n-m个观测点，只能观测到预测变量但无法观测到响应变量。比如对预测变量的采集相对简单，而相应的响应变量却比较难采集，就会出现这种情况。我们称这种问题为半指导学习问题。
+
+#### 强化学习
+
+　　强化学习的基本要素：智能体、行为、状态和奖励。将状态映射为行为，去最大化收益。智能体并不是被告知哪种行为将要执行，而是通过尝试学习到最大增益的行为并付诸行动。也就是说增强学习关注的是智能体如何在当前状态下采取一系列行为，从而获得最大的累积回报。通过强化学习，一个智能体应该知道在什么状态下应该采取什么行为。从状态到行为的映射的学习，把这个映射称为策略。
+
+## 2.1.5 回归与分类问题
+
+　　变量常分为定量和定性两种类型。我们习惯将响应变量为定量的问题称为回归分析问题，将具有定性响应变量的问题定义为分类问题。
+
+　　根据响应变量是定性的还是定量的来选择所需统计学习方法是数据分析的常规思维，当响应变量是定量是，通常选用回归模型，当响应变量是定性变量时，选择分类模型。预测变量是定性还是定量，通常对选择模型并不十分重要。
+
+# 2.2 评价模型精度
+
+　　没有免费午餐定理(No Free Lunch Theorem)：如果我们不对特征空间有先验假设，则所有的算法的平均表现是一样的。
+
+![Markdown](http://i1.fuimg.com/611786/3033b7898d3da8ed.png)
+
+　　没有任何一种方法能在各种数据集里完胜其他所有的方法。
+
+## 2.2.1 拟合效果检验
+
+　　为评价统计学习方法对某个数据集的效果，需要一些方法评测模型的预测结果与实际观测数据在结果上的一致性。对一个给定的观测，需要定量测量预测的响应值与真实响应值之间的接近程度。在回归中，常用的评价指标有均方误差(mean squared error, MSE)、平均绝对误差(Mean Absolute Error, MAE)以及判定系数(R Squared)等，其中MSE表达式如下：
+$$ MSE = \frac {1} {n} \sum_{i=1}^{n}(y_i - \hat{f}(x_i))^2 \tag{2.5}$$
+　　$\hat{f}(x_i)$是第i个观测点上应用$\hat{f}$的预测值。如果预测的响应值与真实的响应值很接近，则均方误差会非常小。
+
+　　式(2.5)中的MSE是用训练数据计算出来的，它的预测精准的程度一般会比较高，我们称它为训练均方误差(training MSE)。一般而言，我们并不关心这个模型在训练集中的表现如何，而真正的兴趣在于将模型用于测试(test)数据获得怎样的预测精度。
+
+　　训练均方误差用来判断拟合的好不好，测试均方误差用来判断预测效果好不好。当模型的光滑度增加时，训练均方误差会减小，但测试均方误差不一定会降低。
+
+　　训练均方误差小，测试均方误差大的现象称为**过拟合**，出现过拟合就意味着需要降低模型的光滑度，以此减小测试均方误差。与过拟合相对的**欠拟合**是指模型拟合程度不高，数据距离拟合曲线较远，或指模型没有很好地捕捉到数据特征，不能够很好地拟合数据。在训练集表现差，在测试集表现同样很差就可能是欠拟合导致。
+
+　　如果我们掌握了大量的测试数据，可以计算如下函数：
+$$ Ave(\hat{f}(x_0) - y_0)^2 \tag{2.6} $$
+
+　　这是测试观测点$(x_0,y_0)$的均方预测误差，选择的模型应该力图使测试均方误差(test MSE)尽可能小。
+
+　　选择一个使测试均方误差最小的模型的想法：
+
+　　1. 使用一组没有被用于建立统计学习模型的观测数据做测试数据；
+
+　　2. 通过降低训练均方误差(2.5)来选择统计学习模型，但这个想法有一个致命的缺陷：一个模型的训练均方误差最小时，不能保证模型的测试均方误差同时会很小。
+
+![Markdown](http://i2.tiimg.com/611786/89035e634d41863e.png)
+
+　  左图中黑色曲线为真实的$f$，橙色、蓝色和绿色曲线表示了三种可能的对$f$的估计。右图中红色曲线为测试均方误差，灰色曲线为训练均方误差。所有的方法都应使得测试均方误差尽可能最小，水平虚线表示的是(2.3)中的不可约误差$Var(\epsilon)$，对应所有方法的最低测试均方误差。
+
+　  绿色线光滑性最强，训练均方误差最小，与实际数据匹配最好，然而拟合的真正的函数不好，过度曲折了。
+
+　  平滑样条曲线的正式术语是自由度(degree of freedom)，自由度是一个用于描述曲线光滑度的量。
+　  
+　  上图中，当统计学习方法的光滑度增加时，观测到训练均方误差单调递减，测试均方误差皇U形分布，这是统计学习的一个基本特征。当所建立的模型产生一个较小的训练均方误差，但却有一个较大的测试均方误差，就称为该数据被过度拟合。无论过拟合是否发生，我们总是期望训练均方误差比测试均方误差要小。
+
+![Markdown](http://i2.tiimg.com/611786/61f6473b8112cbc9.png)
+　  
+　  上图随着模型的光滑度增加时，模型的训练均方误差在单调递减，测试均方误差呈U形分布。然后这里真实的$f$是一条接近线性的函数，于是线性回归是对于该数据较好的拟合。
+
+![Markdown](http://i2.tiimg.com/611786/c265d754c15ee4bb.png)
+
+　  上图训练均方误差和测试均方误差曲线显示出相似的变化模式，由于真实的$f$f是非线性的，因此线性回归是对于该数据是较差的拟合。
+
+## 2.2.2 偏差-方差权衡
+
+　  测试均方误差U形曲线表明，统计学习方法在计算上面存在两种博弈。在给定值$x_0$时，期望测试均方误差能分解成三个基本量的和，分别为：$\hat{f}(x_0)$的方差、$\hat{f}(x_0)$偏差的平方和误差项$\epsilon$的方差，具体而言：
+$$ E(y_0 - \hat{f}(x_o))^2 = Var(\hat{f}(x_0)) + [Bias(\hat{f}(x_0))]^2 + Var(\epsilon) \tag{2.7}$$
+　  其中$$Var(\hat{f(x_0)})=E[(\hat{f}(x_0)^2] - E[\hat{f}(x_0)]^2$$ $$Bias(\hat{f}(x_0))=E[\hat{f}(x_0)] - f(x_0)$$
+
+　  泛化的推导过程如下：
+$$\begin{align}
+E(y-\hat{f})^2 & = E(f + \epsilon -\hat{f})^2 \\
+& = E(f + \epsilon - \hat{f} + E[\hat{f}] - E[\hat{f}])^2 \\
+& = E[(f - E[\hat{f}])^2] + E[\epsilon^2] + E[(E[\hat{f}] - \hat{f})^2] + 2E[(f - E[\hat{f}])\epsilon] + 2E[\epsilon(E[\hat{f}] - \hat{f})] + 2E[(E[\hat{f}] - \hat{f})(f - E[\hat{f}])] \\
+& = (f - E[\hat{f}])^2 + E[\epsilon^2] + E[(E[\hat{f}] - \hat{f})^2] + 2(f - E[\hat{f}])E[\epsilon] + 2E[\epsilon]E(E[\hat{f}] - \hat{f}) + 2E(E[\hat{f}] - \hat{f})(f - E[\hat{f}]) \\
+& = (f - E[\hat{f}])^2 + E[\epsilon^2] + E[(E[\hat{f}] - \hat{f})^2] \\
+& = (f - E[\hat{f}])^2 + Var[\epsilon] + Var[\hat{f}] \\
+& = [Bias[\hat{f}]]^2 + Var[\epsilon] + Var[\hat{f}]
+\end{align}$$
+
+　  为使期望测试误差达到最小，需要选择一种统计学习方法使方差和偏差同时达到最小。
+
+　  方差：代表的是用一个不同的训练数据集估计$f$时，估计函数的改变量。如果一个模型有较大的方差，那么训练数据集微小的变化则会导致$\hat{f}$较大的改变。一般来说，光滑度越高的统计模型有更高的方差。
+
+　  偏差：为了选择一个简单的模型逼近真实函数而被带入的误差。光滑度越高的方法所产生的偏差越小。
+
+![Markdown](http://i1.fuimg.com/611786/8cfed4f49efab0b4.png)
+
+　　一般而言，光滑度更高的方法，所得的模型方差会增加，偏差会减小。
+![Markdown](http://i2.tiimg.com/611786/6295d5d2cd60e4d7.png)
+
+　　蓝色曲线：在不同光滑度下偏差的平方；橙色曲线：方差；水平虚线：不可约误差$Var(\epsilon)$。红色曲线：三者的和，即测试均方误差。
+
+　　在三个例子中，当模型的光滑度增加时，模型的方差增加，偏差减小。然而，最优测试均方误差所对应的光滑度水平在三个数据集中是不同的。
+
+　　左图中，偏差迅速减小，使得期望测试均方误差急剧减小；中图，真实的$f$ 接近于线性，因此当模型的光滑度增加时，偏差只发生了微小的变化，而且测试均方误差在由方差增大所引起的迅速增长前仅出现了轻微的下降；右图，由于真实的$f$ 是非线性的，随着所选模型光滑度的增加，偏差会急剧减小。随着光滑度的增长，方差也有很小的增加。
+
+　　上图所显现的偏差、方差和测试均方误差之间的关系即是偏差——方差的权衡 (bias-variance trade-off)；如果一个统计学习模型被称为测试性能好，那么要求该模型有较小的方差和较小的偏差。
+
+## 2.2.2 偏差-方差诊断
+
+　　学习曲线会展示误差随着训练集的改变而如何发生变化。偏差问题的主要标志是高验证误差，方差问题首先检查验证学习曲线和训练学习曲线之间的差距，然后检查训练误差。
+
+![Markdown](http://i1.fuimg.com/611786/c06ee41a73a132df.png)
+![Markdown](http://i1.fuimg.com/611786/4fb7779dd5f9e862.png)
+
+　　高验证集误差表明是一个偏差问题，但并不能直接指明具体的偏差问题。与此同时，高训练集误差表明是高偏差问题（欠拟合），模型不能很好地拟合训练数据；而低训练集误差表明是低偏差问题，模型可以很好地拟合训练数据。两曲线较小的差距代表较小的方差，差距越小方差越小，反之亦然。高方差说明出现过拟合问题。
+
+```{r}
+library('reticulate')
+use_python('D:/Anaconda3', required = T)
+py_config()
+```
+
+```{python}
+import random
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.model_selection import train_test_split
+from sklearn import metrics
+
+x = np.linspace(-2, 2, 100)
+y = x**5 + x**3 + x
+plt.plot(x, y)
+Y = []
+for i in range(len(y)):
+    Y.append(y[i] + random.uniform(-10, 10))
+plt.scatter(x, Y)
+plt.xlabel('x', fontsize = 20)
+plt.ylabel('y', fontsize = 20)
+plt.show()
+```
+
+```{python}
+x = x.reshape(len(x), 1)
+train_x, test_x, train_y, test_y = train_test_split(x, Y, random_state = 7)
+
+pr = LinearRegression()
+train_MSE, test_MSE = [], []
+for j in range(2, 20):
+    poly_features = PolynomialFeatures(degree = j)
+    poly_train_x = poly_features.fit_transform(train_x)
+    poly_test_x = poly_features.fit_transform(test_x)
+    res = pr.fit(poly_train_x, train_y)
+    train_MSE.append(metrics.mean_squared_error(res.predict(poly_train_x), train_y))
+    test_MSE.append(metrics.mean_squared_error(res.predict(poly_test_x), test_y))
+
+x_ = range(2, 20)
+plt.plot(x_, train_MSE, label = 'train_MSE')
+plt.plot(x_, test_MSE, label = 'test_MSE')
+plt.xlabel('degree', fontsize = 20)
+plt.ylabel('MSE', fontsize = 20)
+plt.legend(loc = 'upper right')
+plt.show()
+```
+
+```{python}
+lr = LinearRegression()
+lr.fit(train_x, train_y)
+
+def pr_(degree):
+    poly_features = PolynomialFeatures(degree = degree)
+    poly_train_x = poly_features.fit_transform(train_x)
+    pr = LinearRegression()
+    pr.fit(poly_train_x, train_y)
+    
+    equation = 0
+    for i in range(degree):
+        equation += pr.coef_[i+1]*x**(i+1)
+    return equation
+
+plt.figure(figsize=(12, 12))
+for i in range(1, 5):
+    ax = int(str(22) + str(i))
+    ax1 = plt.subplot(ax)
+    plt.plot(x, y)
+    plt.scatter(x, Y)
+    plt.plot(x, lr.coef_[0]*x + lr.intercept_, label = 'lr fit')
+    plt.plot(x, pr_(5*i), label = 'pr fit ' + 'degree = ' + str(5*i))
+    plt.xlabel('x', fontsize = 20)
+    plt.ylabel('y', fontsize = 20)
+    plt.legend(loc = 'upper left')
+plt.show()
+```
+
+```{python}
+def var_bias(degree):
+    poly_features = PolynomialFeatures(degree = degree)
+    poly_train_x = poly_features.fit_transform(train_x)
+    poly_test_x = poly_features.fit_transform(test_x)
+    train_MSE, test_MSE = [], []
+    for i in range(40, len(train_x) + 1):
+        res = pr.fit(poly_train_x[:i], train_y[:i])
+        train_MSE.append(metrics.mean_squared_error(res.predict(poly_train_x[:i]), train_y[:i]))
+        test_MSE.append(metrics.mean_squared_error(res.predict(poly_test_x[:i]), test_y[:i]))
+    return train_MSE, test_MSE
+
+plt.figure(figsize=(12, 12))
+for i in range(1, 5):
+    ax = int(str(22) + str(i))
+    ax1 = plt.subplot(ax)
+    train_MSE, test_MSE = var_bias(5*i)[0], var_bias(5*i)[1]
+    x_ = np.arange(40, len(train_MSE) + 40, 1)
+    plt.plot(x_, train_MSE, label = 'train_MSE degree =' + str(5*i))
+    plt.plot(x_, test_MSE, label = 'test_MSE degree =' + str(5*i))
+    plt.xlabel('train_data_dize', fontsize = 20)
+    plt.ylabel('MSE', fontsize = 20)
+    plt.legend(loc = 'upper right')
+plt.show()
+```
+```{python}
+train_MSE, test_MSE = var_bias(2)[0], var_bias(2)[1]
+x_ = np.arange(40, len(train_MSE) + 40, 1)
+plt.plot(x_, train_MSE, label = 'train_MSE degree = 2')
+plt.plot(x_, test_MSE, label = 'test_MSE degree = 2')
+plt.xlabel('train_data_dize', fontsize = 20)
+plt.ylabel('MSE', fontsize = 20)
+plt.legend(loc = 'upper right')
+plt.show()
+```
+
+## 2.2.3 分类模型
+
+　　假设建模的目标是在训练集${(x_1,y_1),\cdots,(x_n,y_n)}$上寻找对$f$的估计，其中$y_1,\cdots,y_n$是定性变量。最常用的衡量估计$f$精度的方法是训练错误率(error rate)，也就是说对训练数据使用估计模型$f$所造成的误差比例，如下所示：
+$$\frac{1}{n} \sum_{i=1}^{n} {I(y_i \neq \hat{y}_i)} \tag{2.8}$$
+
+　　其中$\hat{y}_i$是使用$\hat{f}$预测数据的第$i$个值。$I(y_i \neq \hat{y}_i)$表示一个示性变量(indicator variable)，当$y_i \neq \hat{y}_i$时，值等于1，当$y_i = \hat{y}_i$时，值等于0。 
+
+　　在一组测试观测值$(x_0, y_0)$上的误差计算具有以下形式：
+$$Ave(I(y_0 \neq \hat{y}_0)) \tag{2.9}$$
+
+　　其中$\hat{y}_0$是用模型预测的分类标签。一个好的分类器应用(2.9)表示的预测误差最小。
+
+　　除此之外，还可以通过混淆矩阵(Confusion Matrix)、Roc(Receiver Operating Character)曲线、AUC(Area Under Curve)、等错误率(Equal Error Rate,EER)等来评估模型的优劣。
+
+　　二分类问题混淆矩阵：
+![Markdown](http://i1.fuimg.com/611786/cf6d48dc54c57e57.png)
+
+　　TP+FN=1；FP+TN=1。FN减小<——>TP增大<——>FP增大<——>TN减小。
+
+　　准确率(Accuracy)：衡量所有样本被分类准确的比例。
+
+$$Accuracy = \frac{TP+TN}{TP+FP+FN+TN}$$
+
+　　精确率(Precision)：也叫查准率，衡量正样本的分类准确率，就是说被预测为正样本的样本有多少是真的正样本。
+
+$$Precision = \frac{TP}{TP+FP}$$
+
+　　召回率(Recall)：也叫查全率，表示分类正确的正样本占总的正样本的比例。
+
+$$Recall = \frac{TP}{TP+FN}$$
+
+　　F1-score：精确率和召回率的调和平均。
+
+$$F_1 = \frac{2PR}{P+R} = \frac{2TP}{2TP+FP+TN}$$
+
+　　Roc曲线：
+
+![Markdown](http://i1.fuimg.com/611786/9f405157b6910402.png)
+
+　　AUC：曲线同横坐标轴之间的面积。随机给定一个正样本和一个负样本，分类器输出该正样本为正的那个概率值比分类器输出该负样本为正的那个概率值要大的可能性。如果AUC值大，当然会有更多的正样本被更大概率预测准确，负样本被预测为正样本的概率也会越小。
+
+　　EER：等错误率，是两类错误FP和FN相等时候的错误率。
+
+### 贝叶斯分类器
+
+　　将每个观测值分配到它最大可能所在类别中，将这个类作为它的预测值即可。换句话说，将一个待判别的$x_0$分配到下面这个式子最大的那个$j$类上是合理的：
+$$ Pr(Y = j| X = x_0) \tag{2.10}$$
+
+　　(2.10)是一个条件概率。它是给定了观测向量$x_0$条件下$Y=j$的概率。在一个二分类问题中，只有两个可能的响应值，一个称为类别1，另一个称为类别2.如果$Pr(Y=1|X=x_0)>0.5$,贝叶斯分类器将该观测的类别预测为1，否则预测为类别2。
+![Markdown](http://i2.tiimg.com/611786/da3ff150cdf7c8c4.png)
+
+　　橙色阴影部分：$Pr(Y=orange|x)$大于50%的点；蓝色区域：概率低于50%的点；紫色的虚线：概率等于50%的点，这条线称为贝叶斯决策边界。
+
+　　贝叶斯分类器将产生最低的测试错误率，称为贝叶斯错误率。在$X = x_0$处的错误率将是$1 - max_jPr(Y=j|X=x_0)$。一般来说，整个的贝叶斯错误率是
+$$ 1 - E(\operatorname*{\max}_{j} \, Pr(Y = j |X)) \tag{2.11} $$
+
+　　对于模拟数据，贝叶斯错误率是0.1304，比0大，因为这两个类在一些部分有交叠，所以对某些问，在其真实的类上有$max_jPr(Y=j|X=x_0)<1$。
+
+### k最近邻方法
+
+　　因为很难知道给定X后Y的条件分布，所以有的时候计算贝叶斯分类器是不可能的。它是一种难以达到的黄金标准。
+
+　　K最近邻(KNN)分类器，给一个正整数K和一个测试观测值$x_0$，KNN分类从识别训练集中K个最靠近$x_0$的点集开始，用$\scr N_0$表示K个点的集合，然后对每个类别$j$分别用$\scr N_0$中的点估计一个分值作为条件概率的估计，这个值等于$j$：
+$$ Pr( Y = j \,  | \, X = x_0) = \frac{1} {K} \sum_ {i \in \scr N_0 }I(y_i = j) \tag{2.12} $$
+　　最后，对KNN方法运用贝叶斯规则将测试观测值$x_0$分到概率最大的类中。
+
+![Markdown](http://i1.fuimg.com/611786/ff7bd321c5752a49.png)
+
+　　尽管这种方法原理简单，但KNN确实能够产生一个对最优贝叶斯分类器近似的分类器。 
+![Markdown](http://i1.fuimg.com/611786/f98713e3d4992311.png)
+
+　　k=10,该例中，KNN方法的测试错误率是0.1362，近似与贝叶斯错误率0.1304。K的选择对获得KNN分类器有根本性的影响。
+![Markdown](http://i1.fuimg.com/611786/c415a634c09f66e8.png)
+
+　　K=1 ，偏差较低，方差很大，测试错误率为0.1695；k=100，方差较低，偏差很大，错误率为0.1925
+
+　　正如回归设置中，训练错误率和测试错误率之间没有一个确定的关系。一般而言，当使用光滑度较高的分类方法时，训练错误率将减小但测试错误率则不一定很小。
+
+![Markdown](http://i1.fuimg.com/611786/50f56992b506f21d.png)
+
+　　数据所生成的KNN分类器训练错误率(蓝色，200观测点)和测试错误率(橙色，5000观测点)，黑色的虚线表示贝叶斯错误率。
+
+　　当$\frac{1}{K}$增加时，方法的柔性增强。在回归设置中，当光滑度增加时，训练错误率会持续递减，但测试误差显式为U形。选择合适的光滑水平是成功建模的关键。
+
+# 2.3 实验：R语言简介
+[R]http://cran.r-project.org/
+
+## 2.3.1 基本命令
+```{r}
+# 将数字1,3,2,5连在一起，并将它们保存到一个名为x的向量中，默认为列向量，t()用来转置
+x <- c(1, 3, 2, 5)
+x
+# 也可以用=保存
+x = c(1, 6, 2)
+x
+y = c(1, 4, 3)
+# 在R窗口里打开一个帮助文件
+?funcname
+length(x)
+length(y)
+x + y
+# 查看所有的对象列表
+ls()
+# 去除对象x和y
+rm(x, y)
+ls()
+# 去除所有对象
+rm(list = ls())
+```
+
+```{r}
+# 默认按列排序
+x <- matrix(data = c(1,2,3,4), nrow = 2, ncol = 2)
+x
+x <- matrix(c(1,2,3,4), 2, 2)
+# 并未给矩阵赋值，意味着这个矩阵仅用于打印在屏幕上，不能为将来计算所用， byrow = true 表示先填行后填列
+matrix(c(1,2,3,4), 2, 2, byrow = TRUE)
+# 开方
+sqrt(x)
+x^2
+# 生成服从标准正态分布的随机数
+x <- rnorm(50)
+# 生成服从正态分布的50个随机数，均值是50，标准差为0.1
+y <- x + rnorm(50, mean = 50, sd = .1)
+# 计算x,y的相关系数
+cor(x,y)
+# 进行输出设置，使代码产生完全相同的随机数，括号里可以是任意整数
+set.seed(1303)
+rnorm(10)
+```
+
+```{r}
+set.seed(2)
+x <- rnorm(10)
+x
+set.seed(2)
+y <- rnorm(10)
+y
+z <- rnorm(10)
+z
+```
+
+```{r}
+set.seed(3)
+y <- rnorm(10)
+y
+mean(y)
+# 计算向量方差
+var(y)
+sqrt(var(y))
+# 计算标准差
+sd(y)
+```
+
+```{r}
+x <- rnorm(100)
+y <- rnorm(100)
+plot(x, y)
+plot(x, y, xlab = "this is the x-axis", ylab = "this is the y-axis", main = "Plot of X vs Y")
+# 建立一个pdf文件
+pdf("Figure.pdf")
+plot(x, y, col = 'green')
+# 建立一个jpeg格式的输出文件
+jpeg("Figure.jpeg")
+plot(x, y, col = 'green')
+# 指示用R创建图形的工作到此为止
+dev.off()
+```
+
+```{r}
+# 0,1之间等距的10个数的序列
+seq(0, 1, length = 10)
+# seq(a, b)在a和b之间建立一个整数向量
+x <- seq(1, 10)
+x
+x <- 1 : 10
+x
+x <- seq(-pi, pi, length = 50)
+x
+```
+
+### contour()
+```{r}
+x <- seq(1, 10)
+y <- seq(2, 11)
+y
+# 不指定第三个参数，默认为“*”，求向量x,y的外积，即x * y.T
+outer(x, y) 
+f = outer(x, y, function(x, y) y / x)
+# myfunc <- function(a, b){
+#   t = b / a
+#   return(t)
+# }
+# f = outer(x, y, myfunc)
+f
+```
+
+```{r}
+x <- seq(-pi, pi, length = 50)
+y <- x
+f <- outer(x, y, function(x, y) cos(y)/(1 + x^2))
+# myfunc <- function(a, b){
+#   t = cos(b) / (1 + a^2)
+#   return(t)
+# }
+# f = outer(x, y, myfunc)
+contour(x, y, f)
+# nlevels等高线的水平的数值
+contour(x, y, f, nlevels = 45, add = T)
+fa <- (f - t(f))/2
+contour(x, y, fa, nlevels = 15)
+```
+
+### image() 
+```{r}
+# 产生一个有颜色的图形，颜色随Z值的不同而不同，即热地图
+image(x, y, fa)
+# 产生一个三维图
+persp(x, y, fa)
+# 不指定默认为正视图，theta指定左右角度(正视图旋转theta度，按俯视顺时针)，phi指定余纬度(正视图旋转phi度，按左侧视顺时针)
+persp(x, y, fa, phi = 30)
+persp(x, y, fa, theta = 30)
+persp(x, y, fa, theta = 30, phi = 20)
+persp(x, y, fa, theta = 30, phi = 40)
+persp(x, y, fa, theta = 30, phi = 90)
+```
+
+## 2.3.3 索引数据
+```{r}
+A <- matrix(1:16, 4)
+A
+# 选择第二行第列元素
+A[2, 3]
+# 选择第1行和第3行，第2列和第4列
+A[c(1,3), c(2,4)]
+# 选择A的1到3行，2到4列
+A[1:3, 2:4]
+A[1:2, ]
+A[, 1:2]
+# R中把一个单行或者单列称为一个向量
+A[1,]
+# 在索引里用一个负号，表示不包含指示的行或列
+A[-c(1, 3),]
+A[-c(1, 3), -c(1, 3, 4)]
+# 输出一个矩阵的行数和列数
+dim(A)
+```
+
+## 2.3.4 载入数据
+read.table()函数是最基本的方法之一，将数据从文本文件加载到R
+write.table()函数可输出数据
+```{r}
+setwd('C:\\Users\\Administrator\\Desktop\\statistic\\')
+Auto <- read.table('data\\Auto.data')
+# fix(Auto)
+# header = T ,告知R，文件的第一行包含变量名，na.strings告知R在扫描数据的任何位置只要遇到指定的字符特征或者一个特征集，应该在数据矩阵中对这条数据做缺失标记
+Auto <- read.table('data\\Auto.data', header = T, na.strings = "?")
+#数据被保存为一个csv文件(以“，”分隔的文件)，用read.csv()函数很容易读取
+Auto <- read.csv('data\\Auto.csv', header = T, na.strings = "?")
+# fix(Auto)
+dim(Auto)
+# 剔除含有缺失值的行
+Auto = na.omit(Auto)
+dim(Auto)
+# 查看该数据的变量名
+names(Auto)
+```
+
+## 2.3.5 其他的图形和数值汇总
+```{r}
+plot(Auto$cylinders, Auto$mpg)
+attach(Auto)
+plot(cylinders, mpg)
+# as.vector()：因子转字符向量；as.numeric()：因子转数值向量；as.factor()：向量转因子
+# #将cylinders因子化，转化为一个定性的变量
+cylinders <- as.factor(cylinders)
+# 如果要绘制在x轴上的变量是定性的，箱线图将自动通过plot()函数产生
+plot(cylinders, mpg)
+plot(cylinders, mpg, col = "red")
+# varwidth = TRUE 使箱线图的宽度与它们各自的样本大小成正比
+plot(cylinders, mpg, col = "red", varwidth = T)
+# horizontal = TURE 转换方向
+plot(cylinders, mpg, col = "red", varwidth = T, horizontal = T)
+# 设置x，y轴的标签
+plot(cylinders, mpg, col = 2, varwidth = T, xlab = "cylinders", ylab = "MPG")
+```
+
+```{r}
+# hist() 绘制直方图， col = 2等价于col = "red"
+hist(mpg)
+hist(mpg, col = 2)
+hist(mpg, col = 2, breaks = 15) #breaks参数表示带宽
+```
+
+```{r}
+# pairs() 绘制数据集中的成对关系，创建一个Axes网格，建立一个对任何指定数据集中每一对变量的散点图矩阵
+pairs(Auto)
+pairs(~ mpg + displacement + horsepower + weight + acceleration, Auto)
+plot(horsepower, mpg)
+# 对行索引重排序
+rownames(Auto) <- 1 : dim(Auto)[1]
+#单击一个图上的某个点将引导打印指定变量上这个点的值。右击这个图将退出identify()函数当(第一个)鼠标按钮被按下时，identify读取图形指针的位置。然后搜索给定的x和y坐标，寻找最接近指针的点。如果这个点足够接近指针，它的索引将作为调用值的一部分返回，常用来识别异常值
+identify(horsepower, mpg, name)
+#数值汇总
+summary(Auto)
+summary(mpg)
+```
+
