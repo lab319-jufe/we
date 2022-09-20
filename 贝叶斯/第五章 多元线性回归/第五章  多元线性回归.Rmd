@@ -1,0 +1,963 @@
+---
+title: "第五章 多元线性回归"
+output:
+  html_document:
+    toc: true
+    toc_float : true
+    number_sections: true
+    self_contained: no
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+ echo = TRUE,
+ message = FALSE,
+ warning = FALSE,
+ comment = " ",
+ prompt = TRUE,
+ results = "hold"
+)
+```
+
+**例1**有研究发现，北美地区的华夫饼店和高离婚率有一定的相关关系。有较多华夫饼店的州，如乔治亚州和阿拉巴马州，其离婚率较高。而在一些没有华夫饼店的州，离婚率接近于0。真的是因为华夫饼店而导致的高离婚率吗？或许不是这样，这只是一种假相关关系。人们猜测肯定有一些原因导致华夫饼店的数量和离婚率出现的假相关。究其原因，是因为华夫饼店最初出现在乔治亚州，其后大部分华夫饼店主要集中在美国南部，而同时，美国南部人们结婚的年龄更早，所以出现离婚的数量也会相对更多。这种巧合导致了华夫饼店和离婚率出现了相关关系。
+
+像上述这种假相关关系十分常见，如果我们的研究发现了相关关系应当十分小心，相关关系并不意味着因果关系。故我们需要区分相关关系和因果关系。多元线性模型虽然不能判定因果关系，但能够在一定程度上区别不同变量之间的关系。
+
+（1）<font color=Red>多元线性模型可以用来控制混杂变量</font>。混杂变量同时影响着我们观测的多个变量，但是我们没有识别出这个变量。例如：华夫饼店与离婚率例子中的"南部"因素。
+
+（2）<font color=Red>可以矫正多重因果效应</font>。使用多元线性模型可以屏蔽掉其他因素对观测的影响。
+
+（3）<font color=Red>能够帮助识别交互作用</font>。
+
+本章节主要解决上述前两个问题。
+
+# 虚假相关
+
+下面使用简单的线性模型来表示离婚率和结婚年龄的关系，构建线性模型：
+
+**1.结婚年龄中位数和离婚率**
+
+$$D_i \sim Normal(\mu_i.\sigma)$$
+
+$$\mu_i=\alpha+\beta_A A_i$$ $$\alpha \sim Normal(10,10)$$
+$$\beta_A \sim Normal(0,1)$$ $$\sigma \sim Uniform(0,10)$$
+$D_i$是第i个州的离婚率，$A_i$是第i个州的结婚年龄中位数，对上述模型进行拟合：
+
+```{r}
+#载入数据
+library(rethinking)
+data(WaffleDivorce)
+d<- WaffleDivorce#50个州的数据
+```
+
+标准化公式$(x-\overline{x}) /s$
+
+```{r}
+#标准化预测变量
+d$MedianAgeMarriage.s<- (d$MedianAgeMarriage-mean(d$MedianAgeMarriage))/sd(d$MedianAgeMarriage)
+head(d$MedianAgeMarriage.s)
+```
+
+拟合模型
+
+```{r}
+m5.1<- map(
+  alist(
+    Divorce ~ dnorm(mu,sigma),
+    mu<- a+bA*MedianAgeMarriage.s,
+    a ~ dnorm(10,10),
+    bA ~ dnorm(0,1),
+    sigma ~ dunif(0,10)
+  ),data=d)
+```
+
+```{r}
+precis(m5.1)
+```
+
+计算并绘制阴影部分的置信区间
+
+```{r}
+MAM.seq<- seq(from=-3,to=3.5,length.out=30) #均匀抽取-3到3.5中的30个数
+head(MAM.seq)
+```
+
+```{r}
+mu<- link(m5.1,data=data.frame(MedianAgeMarriage.s=MAM.seq))#link()函数能够使用map模型拟合结果，从后验分布中抽取1000对a和bA的样本，计算mu.
+head(mu)
+```
+
+```{r}
+mu.PI<- apply(mu,2,PI)#对mu的每一列求置信区间
+head(mu.PI)
+```
+
+绘制结果
+
+```{r}
+plot(Divorce ~ MedianAgeMarriage.s,data=d,col=rangi2)#散点图
+abline(m5.1)#绘制直线
+shade(mu.PI,MAM.seq)#shade()绘制置信区间的阴影部分
+```
+
+**2.结婚率与离婚率关系图**
+
+```{r}
+d$Marriage.s<- (d$Marriage-mean(d$Marriage))/sd(d$Marriage)
+m5.2<-map(
+  alist(
+    Divorce ~ dnorm(mu,sigma),
+    mu<- a+bR*Marriage.s,
+    a~ dnorm(10,10),
+    bR~dnorm(0,1),
+    sigma~dunif(0,10)
+  ),data=d)
+```
+
+```{r}
+precis(m5.2)
+```
+
+```{r}
+MAM.seq<- seq(from=-3,to=3.5,length.out=30) #均匀抽取-3到3.5中的30个数
+head(MAM.seq)
+```
+
+```{r}
+mu<- link(m5.2,data=data.frame(Marriage.s=MAM.seq))#link()函数能够使用map模型拟合结果，从后验分布中抽取1000对a和bA的样本，计算mu.
+head(mu)
+```
+
+```{r}
+mu.PI<- apply(mu,2,PI)#对mu的每一列求置信区间
+head(mu.PI)
+```
+
+绘制结果
+
+```{r}
+plot(Divorce ~ Marriage.s,data=d,col=rangi2)#散点图
+abline(m5.2)#绘制直线
+shade(mu.PI,MAM.seq)#shade()绘制置信区间的阴影部分
+```
+
+仅仅通过上面的模型，无法准确判断哪一个变量（结婚率，结婚年龄）是离婚率的预测变量。这两个变量之间可能是独立的，可能是冗余的（正相关关系）或者相互抵消（负相关关系）。所以，这时需要用到多元线性模型。
+
+如我们知道了结婚率和结婚年龄，我们能否预测离婚率呢？结婚率是否含有一定量的关于结婚年龄的信息；结婚年龄又是否含有一定量的关于结婚率的信息呢？
+
+## 多元回归模型的数学表达式
+
+多元线性模型的表达式如下：
+
+$$D_i \sim Normal(mu_i,\sigma)  [似然函数]$$
+$$u_i=\alpha+\beta_R R_i+\beta_AA_i  [线性模型]$$
+$$\alpha \sim Normal(10,10) [\alpha的先验分布]$$
+$$\beta_R \sim Normal(0,1)  [\beta_R的先验分布]$$
+$$\beta_A \sim Normal(0,1)  [\beta_A的先验分布]$$
+$$\sigma \sim Uniform(0,10) [\sigma的先验分布]$$
+
+R代表结婚率，A代表结婚年龄中位数
+
+## 拟合模型
+
+对上面的模型进行拟合，使用结婚率和结婚年龄中位数两个变量作为自变量，离婚率作为因变量。
+
+```{r}
+m5.3<- map(
+  alist(
+    Divorce ~ dnorm(mu,sigma),
+    mu<- a+bR*Marriage.s+bA*MedianAgeMarriage.s,
+    a ~ dnorm(10,10),
+    bR ~ dnorm(0,1),
+    bA ~ dnorm(0,1),
+    sigma ~ dunif(0,10)
+  ),
+  data=d)
+precis(m5.3)
+```
+
+结婚率(bR)的后验概率估计接近于0，而结婚年龄(bA)离0比较远，而且89%的置信区间不包括0，几个参数的大小关系如下图所示：
+
+```{r}
+plot(precis(m5.3))
+```
+
+根据上图可以得到，已知结婚年龄就足够预测离婚率，而结婚率对我们的结果影响不大。下面有一个问题：模型是怎样得到这个结果的？为什么与我们单变量模型结果不相同呢？（单变量的时候结婚率和结婚年龄与离婚率都有很强的相关性）
+
+## 多元后验分布图
+
+为了弄清上面的问题，我们可以画图，主要用到三种图：残差图、虚拟图、后验预测图。
+
+**（1）残差图**：展现结果变量对预测变量的残差。
+
+预测变量A的残差是指用除A以外的变量对A建立回归模型。离婚率多元模型中有两个预测变量：结婚率和结婚年龄中位数。对于结婚率，模型为：
+
+$$R_i \sim Normal(\mu_i,\sigma)$$ $$\mu_i=\alpha+\beta A_i$$
+$$\alpha \sim Normal(0,10)$$ $$\beta_R \sim Normal(0,1)$$
+$$\sigma \sim Uniform(0,10)$$
+
+拟合模型的代码：
+
+```{r}
+#模型
+m5.4<- map(
+  alist(
+    Marriage.s ~ dnorm(mu,sigma),
+    mu <- a+b*MedianAgeMarriage.s,
+    a ~ dnorm(0,10),
+    b ~ dnorm(0,1),
+    sigma ~ dunif(0,10)
+  ),
+  data=d)
+precis(m5.4)
+```
+
+残差=真实的结婚率-估计的结婚率
+
+```{r}
+#计算残差
+#计算每个州的MAP估计值
+mu <- coef(m5.4)['a'] + coef(m5.4)['b']*d$MedianAgeMarriage.s
+#coef()返回MAP参数估计的向量，然后用相应的变量名称提取斜率和截距估计
+head(mu)
+```
+
+```{r}
+#计算每个州的残差,若残差为正意味着在该州结婚年龄中位数的条件下，真实观测到的结婚率比估计值高
+m.resid <- d$Marriage.s-mu 
+head(m.resid)
+```
+
+```{r}
+#画图
+plot(Marriage.s ~ MedianAgeMarriage.s , d , col = rangi2)#散点图
+abline(m5.4)#添加MAP结果对应的回归线
+#对所有州进行循环
+for(i in 1:length( m.resid)){
+  x <- d$MedianAgeMarriage.s[i]
+  y <- d$Marriage.s[i]
+  lines(c(x,x) , c(mu[i],y), lwd=0.5 , col=col.alpha("black",0.7))
+}
+```
+
+结婚年龄与结婚率之间的关系拟合后，残差（上图垂直线段表示）随机分布在拟合直线两侧。
+
+下面再把上面的残差与离婚率作图，如下左图所示
+
+[![btiFkd.png](https://s4.ax1x.com/2022/03/03/btiFkd.png)](https://imgtu.com/i/btiFkd)
+
+通过左图，能够反映出控制了结婚年龄这个变量之后，研究结婚率和离婚率之间的关系，竖线表示一定结婚年龄下的期望结婚率。该线左侧表示结婚率低于预期，右侧表示高于预期。图中的回归线，是拟合离婚率和结婚率的残差，是一个近乎平的直线，斜率大概在-0.13,与多元模型得到的结果一样。
+
+同理，还可以控制结婚率来研究结婚年龄和离婚率之间的关系，如上述右图，即控制了结婚率后结婚年龄和离婚率成负相关关系，相关系数为-1.13，和多元线性模型结果一致。我们通过拟合两个自变量模型，扣除一个变量对另一个变量的影响，然后再拟合残差和因变量的模型。
+
+**（2）虚拟图**：展示模型潜在预测情况的图
+
+保持一个变量值固定，来拟合另一个变量和因变量之间的关系。如下面所示，固定结婚年龄在其均值，然后通过模拟研究结婚率和离婚率的关系。
+
+```{r}
+#得到虚拟数据 
+A.avg <- mean(d$MedianAgeMarriage.s)#固定结婚年龄在均值
+R.seq <- seq(from=-3, to=3 , length.out=30 )#创建结婚率的值
+pred.data <- data.frame(
+  Marriage.s=R.seq,
+  MedianAgeMarriage.s=A.avg
+)
+head(pred.data)
+```
+
+```{r}
+#计算平均离婚率
+#进行模拟
+mu <- link(m5.3, data = pred.data)
+head(mu)
+```
+
+```{r}
+mu.mean <- apply(mu, 2 , mean)#对mu的每一列求均值
+head(mu.mean)
+```
+
+```{r}
+mu.PI <- apply(mu, 2 , PI)#对mu的每一列求均值
+head(mu.PI)
+```
+
+```{r}
+#模拟虚拟离婚率预测
+R.sim <- sim(m5.3, data = pred.data, n=10000)
+head(R.sim)
+```
+
+```{r}
+R.PI <- apply(R.sim , 2 , PI)
+head(R.PI)
+```
+
+```{r}
+#展示预测情况，同时不显示原始数据点（设置type="n"）
+plot(Divorce ~ Marriage.s , data=d , type="n")#散点图
+mtext( "MedianAgeMarriage.s = 0")#在图上方添加MedianAgeMarriage.s = 0
+lines(R.seq , mu.mean)#在原图上添加直线
+shade( mu.PI , R.seq)
+shade(R.PI , R.seq)
+```
+
+下面是保持结婚率不变，研究结婚年龄和离婚率的关系。
+
+```{r}
+R.avg <- mean(d$Marriage.s)
+A.seq <- seq(-3,3.5,length.out=30)
+head(A.seq)
+```
+
+```{r}
+pred.data2 <- data.frame(
+  Marriage.s=R.avg,
+  MedianAgeMarriage.s=A.seq
+)
+head(pred.data2)
+```
+
+```{r}
+mu <- link(m5.3,data=pred.data2)
+head(mu)
+```
+
+```{r}
+mu.mean <- apply(mu,2,mean)
+mu.PI <- apply(mu, 2,PI)
+A.sim <- sim(m5.3, data=pred.data2 , n=10000)
+A.PI <- apply(A.sim , 2 , PI)
+```
+
+```{r}
+plot(Divorce ~ MedianAgeMarriage.s, data=d , type="n")
+mtext("Marriage.s=0")
+lines(A.seq , mu.mean)
+shade(mu.PI , A.seq)
+shade(A.PI , A.seq)
+```
+
+上面两张图和残差图得到的结果是一致的，只是这里没有用到观测数据通过模拟得到的结果。
+
+**（3）后验预测图**
+
+前面章节提到过，对模型拟合完之后，要对后验概率分布进行检查，核实模型拟合是否正确，后验概率分布是否和我们观测结果匹配。所有的模型都是我们制造出来的，所以就有可能出现错误。有时候模型拟合的效果很好，但是并没有达到我们想要的目的。或者模型在一个方面预测很好，但是在其他方面预测结果很一般。
+
+下面对之前建立的多元线性模型进行后验概率分布检验。
+
+```{r}
+#调用link函数，使用观测数据，对每一组观测进行1000次抽样
+mu <- link(m5.3)
+head(mu)
+```
+
+```{r}
+#抽样汇总，对不同的样本取均值
+mu.mean <- apply(mu , 2, mean)
+head(mu.mean)
+```
+
+```{r}
+mu.PI <- apply(mu, 2, PI)
+head(mu.PI)
+```
+
+```{r}
+#抽样预测，这里也没有设置数据集，用原始数据集
+divorce.sim <- sim(m5.3,n=1e4)
+head(divorce.sim)
+```
+
+```{r}
+divorce.PI <- apply(divorce.sim, 2, PI)
+head(divorce.PI)
+```
+
+以下通过绘制预测和观测图来显示随机模拟结果
+
+```{r}
+#作图
+plot(mu.mean ~ d$Divorce, col=rangi2, ylim=range(mu.PI),xlab = "Observed divorce", ylab = "Predicted divorce")
+abline(a = 0, b = 1, lty=2)
+for(i in 1:nrow(d)){
+ lines(rep(d$Divorce[i],2), c(mu.PI[1,i],mu.PI[2,i]), col=rangi2)
+}
+
+```
+
+我们得到了观测和预测结果的分布图，可以看出，这种随机模拟方式得到的结果会过低估计离婚率高的州，而过高估计离婚率低的州，有一些州离对角线很远，说明模型根本无法很好的预测这些州。
+
+而且从上图很难看出预测误差的大小，因此，大多时候人们会用残差图来展示平均预测误差，如下：
+
+```{r}
+#计算残差，真实值减去预测值
+divorce.resid <- d$Divorce - mu.mean
+#按照离婚率从低到高进行排序
+o <- order(divorce.resid)
+
+```
+
+```{r}
+#画图
+dotchart(divorce.resid[o],labels = d$Loc[o], xlim = c(-6,5), cex = 0.6)
+abline(v=0, col = col.alpha("black",0.2))
+for(i in 1:nrow(d)){
+ j <- o[i]
+ lines(d$Divorce[j] - c(mu.PI[1,j],mu.PI[2,j]), rep(i,2))
+ points(d$Divorce[j] - c(mu.PI[1,j],mu.PI[2,j]), rep(i,2), pch = 3, cex=0.6,col="gray")
+}
+```
+
+通过上面的残差图、虚拟图和后验分布图，可以看出，结婚率和离婚率之间并没有相关关系，单变量分析出现的相关关系是假相关，真正和离婚率有关系的是结婚年龄，通过多元线性模型能够很好的识别出假相关关系。
+
+# 隐藏的关系
+
+上面的例子显示了多变量的线性模型能够避免假相关。另外还能避免两个变量的屏蔽关系，即两个存在相关性的自变量，一个和因变量成正相关，另一个成负相关。
+比如，下面的例子，我们考虑灵长类动物奶水能量含量和体重，以及大脑体积之间的关系。对于哺乳动物，奶水是一笔昂贵的支出，物种不同生理状态和发育阶段的不同，奶水成分也会不同。一个普遍的观点认为，大脑体积较大的灵长类动物奶水中含有的能量也会越高，这样能够支持大脑的快速发育。下面的例子我们用了29个灵长类物种的相关数据。
+
+kal.per.g：每克奶水中含有的能量 mass：体重
+neocortex.perc：大脑新皮质占比（大脑体积）
+
+我们要研究的问题是，奶水中能量含量在多大程度上和大脑新皮质占比相关。首先我们建立一元线性模型，如下：
+
+```{r}
+#加载数据
+library(rethinking)
+data(milk)
+d <- milk
+str(d)
+```
+
+```{r}
+# 去除含有NA的不完整观测数据
+dcc <- d[complete.cases(d),]#neocortex.perc中有缺失，函数dnorm无法处理这些缺失值。只能返回NAN
+
+```
+
+对处理后的新数据框进行模拟：
+
+```{r}
+m5.5 <- map(
+ alist(
+ kcal.per.g ~ dnorm(mu,sigma),
+ mu <- a + bn*neocortex.perc,
+ a ~ dnorm(0,100),
+ bn ~ dnorm(0,1),
+ sigma ~ dunif(0,1)
+ ),
+ data = dcc
+)
+
+```
+
+```{r}
+precis(m5.5, digits = 3)
+#二项逼近结果的汇总，由于bn的后验均值很小，四舍五入的结果是0，所以保留小数点后三位
+```
+
+结果可见，斜率bn很小，89%的置信区间也包括了0，对上述结果作图如下：
+
+```{r}
+np.seq <- 0:100
+pred.data <- data.frame(neocortex.perc = np.seq)
+
+mu <- link(m5.5, data = pred.data, n=1e4)
+mu.mean <- apply(mu,2,mean)
+mu.PI <- apply(mu,2,PI)
+plot(kcal.per.g ~ neocortex.perc, data = dcc, col=rangi2)
+lines(np.seq, mu.mean)
+lines(np.seq, mu.PI[1,], lty = 2)
+lines(np.seq, mu.PI[2,], lty = 2)
+
+```
+
+其中MAP线几乎是一条平直的线，呈现了很弱的相关性。
+同样的，我们研究一下体重和奶水能量含量的相关性，为了更好地研究该变量和其他变量之间的关系，取对数将原来的单位转换成无量纲的度量。
+
+```{r}
+dcc$log.mass<- log(dcc$mass)
+```
+
+下面进行拟合模型
+
+```{r}
+m5.6 <- map(
+ alist(
+ kcal.per.g ~ dnorm(mu,sigma),
+ mu <- a + bm*log.mass,
+ a ~ dnorm(0,100),
+ bm ~ dnorm(0,1),
+ sigma ~ dunif(0,1)
+ ),
+ data = dcc
+)
+```
+
+```{r}
+precis(m5.6 )
+```
+
+```{r}
+#绘图
+np.seq <- -100:100
+pred.data <- data.frame(log.mass = np.seq)
+
+mu <- link(m5.6, data = pred.data, n=1e4)
+mu.mean <- apply(mu,2,mean)
+mu.PI <- apply(mu,2,PI)
+plot(kcal.per.g ~ log.mass, data = dcc, col=rangi2)
+lines(np.seq, mu.mean)
+lines(np.seq, mu.PI[1,], lty = 2)
+lines(np.seq, mu.PI[2,], lty = 2)
+
+```
+
+上图看出，体重和奶水能量含量呈负相关，但是区间很宽。
+
+下面我们把两个变量放在一个模型中，看看会有什么样的结果。
+$$k_i \sim Normal(\mu_i,\sigma)$$
+$$\mu_i=\alpha+\beta_n n_i+\beta_m log(m_i)$$
+$$\alpha \sim Normal(0,100)$$ $$\beta_n \sim Normal(0,1)$$
+$$\sigma \sim Uniform(0,10)$$ 对对数转换后的新数据进行模型拟合
+
+```{r}
+#此处体重做了对数变换
+dcc$log.mass <- log(dcc$mass)
+m5.7 <- map(
+ alist(
+ kcal.per.g ~ dnorm(mu,sigma),
+ mu <- a + bn*neocortex.perc + bm*log.mass,
+ a ~ dnorm(0,100),
+ bn ~ dnorm(0,1),
+ bm ~ dnorm(0,1),
+ sigma ~ dunif(0,1)
+ ),
+ data = dcc
+)
+precis(m5.7)
+
+```
+
+两个变量的斜率一个表现为正相关，一个表现为负相关，而且他们的区间都离0很远。单变量线性模型分析没有显著意义的两个变量在多变量线性模型中均出现了显著性！
+
+怎么回事？我们首先使用虚拟图画奶水能量含量\~新皮质含量，另一个自变量体重采用均值。
+
+```{r}
+mean.log.mass <- mean(log(dcc$mass))#平均对数体重
+np.seq <- 0:100#抽取0-100的101个数作为奶水能量
+pred.data <- data.frame(
+ neocortex.perc = np.seq,
+ log.mass = mean.log.mass
+)
+
+```
+
+```{r}
+mu <- link(m5.7, data = pred.data, n = 1e4)#link()函数从后验分布中抽取10000对斜率和截距
+
+```
+
+```{r}
+#计算每一列的均值和置信区间
+mu.mean <- apply(mu,2,mean)
+mu.PI <- apply(mu,2,PI)
+
+```
+
+```{r}
+#绘图
+plot(kcal.per.g ~ neocortex.perc, data = dcc, type = "n")
+lines(np.seq, mu.mean)
+#绘制置信上限和置信下限
+lines(np.seq, mu.PI[1,], lty = 2)
+lines(np.seq, mu.PI[2,], lty = 2)
+```
+
+同样的画奶水能量含量\~体重，结果如下：
+
+```{r}
+mean.neocortex.perc <- mean(dcc$neocortex.perc)
+np.seq <- -100:100
+pred.data <- data.frame(
+ log.mass = np.seq,
+ neocortex.perc = mean.neocortex.perc
+)
+mu <- link(m5.7, data = pred.data, n = 1e4)
+mu.mean <- apply(mu,2,mean)
+mu.PI <- apply(mu,2,PI)
+plot(kcal.per.g ~log.mass, data = dcc, type = "n")
+lines(np.seq, mu.mean)
+lines(np.seq, mu.PI[1,], lty = 2)
+lines(np.seq, mu.PI[2,], lty = 2)
+
+```
+
+这时，两个变量都出现了很强的相关性。为什么单变量和多变量模型差别这么大？主要是因为，这两个变量一个和结果呈正相关，另一个和结果呈负相关，而这两个变量之间也存在正相关。它们对结果的作用相互抵消，也就是起到了屏蔽的作用。
+
+# 添加变量起反作用
+
+上面的例子中我们用了体重和大脑新皮质含量两个变量，为什么我们不把其他几个变量也纳入我们的模型中呢？如果把所有变量都纳入模型中，可能会存在如下问题：多重共线性、后处理偏差(指的是对因子的结果进行控制产生的偏差)和过度拟合(下一章详细介绍)。
+
+## 多重共线性
+
+多重共线性的存在会使得后验概率分布变宽，下面通过模拟来展示多重共线性对结果的影响。我们模拟100个人的身高和腿长的关系。身高服从正态分布，腿长占身高的0.4-0.5，同时每一条腿加上一定的随机误差，所以左右腿的长度不一样。最后将模拟的腿长和身高的结果存储在一个数据框中。
+
+```{r}
+N<- 100              #观测数目
+height<- rnorm(N,10,2)   #模拟身高数据，产生100个均值为10，标准差为2的随机数
+head(height)
+
+```
+
+```{r}
+leg_prop<- runif(N,0.4,0.5)     #腿长占身高的比例，生成100个0.4到0.5的随机数
+head(leg_prop)
+```
+
+```{r}
+leg_left<-  leg_prop*height+rnorm(N,0,0.02)   #模拟左腿长，加上随机误差
+head(leg_left)
+```
+
+```{r}
+leg_right<- leg_prop*height+rnorm(N,0,0.02) #模拟右腿长，加上随机误差
+head(leg_right)
+```
+
+```{r}
+d<- data.frame(height,leg_left,leg_right)  #将观测数据存储在一个数据框中
+head(d)
+```
+
+下面我们用左腿和右腿的腿长来构建二元模型，预测身高。
+
+```{r}
+library(rethinking)
+m5.8<- map(
+  alist(
+    height ~ dnorm(mu,sigma),
+    mu <- a+bl*leg_left+br*leg_right,
+    a ~ dnorm(10,100),
+    bl ~ dnorm(2,10),
+    br ~ dnorm(2,10),
+    sigma ~ dunif(0,10)
+  ),
+   data=d )
+precis(m5.8)
+```
+
+```{r}
+plot(precis(m5.8))
+```
+
+模拟的结果很奇怪，身高数据是基于腿长建立起来的，左右腿长也相差不大，所以身高应该和两条腿的腿长呈现出很强的正相关。但上面的结果却没有表现出这种相关性。
+
+主要问题是相关性，我们通过抽样来查看左腿和右腿腿长相关系数之间的关系。
+
+```{r}
+post<- extract.samples(m5.8)#默认抽取10000个变量
+plot(bl ~ br,post,col=col.alpha(rangi2,0.1),pch=16)
+```
+
+两条腿的相关性几乎分布在一条直线上，说明他们之间存在严重的共线性。当bl(左腿斜率)大的时候，br(右腿斜率)必须变小，也就是bl和br含有几乎一样的信息，所以对于同一个身高，bl和br有无数种组合形式。可以使用以下模型来理解该现象：
+
+$$y_i \sim Normal(\mu_i,\sigma)$$ $$\mu_i=\alpha+\beta_ix_i+\beta_2x_i$$
+其中y是结果变量，即身高。x是预测变量，也即是腿长。
+$\beta_1$和$\beta_2$同时影响身高不能单独进行分析，我们对其后验概率作图如下：
+
+```{r}
+sum_blbr<- post$bl+post$br   #真正对身高的影响是两者之和
+dens(sum_blbr,col=rangi2,lwd=2,xlab="sum of bl and br")
+```
+
+后验分布的均值所在的位置是正确的，稍微大于2。且相应的标准差比其中任何一个参数后验分布的样本要小。如果只使用一个变量来拟合模型，得到的后验概率分布图和上图很接近，如下所示：
+
+```{r}
+m5.9<- map(
+  alist(
+    height ~ dnorm(mu,sigma),
+    mu<- a+bl*leg_left,
+    a ~ dnorm(10,100),
+    bl ~ dnorm(2,10),
+    sigma ~ dunif(0,10)
+  ),
+   data=d)
+precis(m5.9)
+```
+
+这里的1.99和之前两个参数样本和得出的均值几乎一样。所以当两个变量存在很强的相关性的时候，带入模型中，就会出现一些难以让人理解的地方。在这种情况下，不是模型出现了错误，而是模型无法告诉你哪条腿对身高的影响更大，但是你如果用该模型预测身高，依然能够得出很准确的预测。
+
+## 母乳数据中的共线性
+
+我们再通过之前奶水能量的实例来看多重共线性。这次我们用脂肪含量(perc.fat)和乳糖含量(perc.lactose)来预测奶水中能量含量。下面是两个变量单独拟合的模型。
+
+```{r}
+library(rethinking)
+data(milk)
+d<-milk
+head(d)
+
+```
+
+```{r}
+m5.10<- map(
+  alist(
+    kcal.per.g ~ dnorm(mu,sigma),
+    mu <- a+bf*perc.fat,
+    a ~ dnorm(0.6,10),
+    bf ~ dnorm(0,1),
+    sigma ~ dunif(0,10)
+  ),
+   data=d)
+```
+
+```{r}
+m5.11<- map(
+  alist(
+    kcal.per.g ~ dnorm(mu,sigma),
+    mu <- a+bl*perc.lactose,
+    a ~ dnorm(0.6,10),
+    bl ~ dnorm(0,1),
+    sigma ~ dunif(0,10)
+  ),
+   data=d)
+```
+
+```{r}
+precis(m5.10,digits = 3)
+```
+
+```{r}
+precis(m5.11,digits = 3)
+```
+
+脂肪含量斜率(bf)为正，乳糖含量斜率(bl)为负，并且他们的区间都不包括0。把上述两个变量放在一个模型中。
+
+```{r}
+m5.12<- map(
+  alist(
+    kcal.per.g ~ dnorm(mu,sigma),
+    mu <- a+bf*perc.fat+bl*perc.lactose,
+    a ~ dnorm(0.6,10),
+    bf ~ dnorm(0,1),
+    bl ~ dnorm(0,1),
+    sigma ~ dunif(0,10)
+  ),
+   data=d)
+precis(m5.12,digits = 3)
+```
+
+如果模型中同时包含了脂肪含量和乳糖含量，那么他们的斜率都更加接近于0了。
+
+```{r}
+cor(d$perc.fat,d$perc.lactose) #计算相关系数
+```
+
+脂肪含量和乳糖含量的相关系数为-0.94，也就是说这两个变量几乎含有相同的信息量，我们几乎可以使用一个变量来代替另一个变量。所以如果你把两个如此高相关性的变量都纳入模型中，得到的后验概率实际上是描述了两个变量所有可能的组合。
+
+下面展示了两个自变量和奶水含量三者之间的相关关系。
+
+```{r}
+pairs(~ kcal.per.g+perc.fat+perc.lactose,
+      data=d,col=rangi2 )
+```
+
+那么共线性大小对结果的影响有多大呢，又该怎样评价。这儿我们做了一些模拟，来看两个变量相关性系数大小和后验概率分布的标准差，一般认为，共线性越大，造成的后验概率分布的标准差也会越大。经过模拟，我们得到了如下结果：
+
+```{r}
+library(rethinking)
+data(milk)
+d<- milk
+sim.coll <- function(r=0.9){
+  d$x <- rnorm(nrow(d),mean=r*d$perc.fat,
+       sd=sqrt((1-r^2)*var(d$perc.fat)))#在正态分布中随机生成29个数
+  m<- lm(kcal.per.g ~ perc.fat+x,data=d)#线性拟合
+  sqrt(diag(vcov(m)))[2]# stddev of parameter 取出协方差矩阵对角线上第二行的值，即也是脂肪含量的标准差
+}
+```
+
+对上面的过程进行100次回归并且返回平均标准差
+
+```{r}
+rep.sim.coll<- function(r=0.9,n=100){
+  stddev<- replicate(n,sim.coll(r))
+  mean(stddev)
+}
+```
+
+```{r}
+r.seq<- seq(from=0,to=0.99,by=0.01)
+head(r.seq)
+```
+
+```{r}
+stddev<- sapply(r.seq,function(z)rep.sim.coll(r=z,n=100))
+head(stddev)
+```
+
+```{r}
+plot(stddev ~ r.seq,type="l",col=rangi2,lwd=2,xlab="correlation")
+```
+
+当相关性大于0.9时，后验概率分布的标准差会迅速增大，而且到相关性接近1时，标准差接近于无穷大。
+
+遇到多重共线性我们应该怎么做？首先，我们在分析问题之前应该意识到这个问题，应该对各个变量的相关性做检查。如果相关性超过0.9，那么就应该考虑共线性对模型的影响了。其次，通常我们可以使用主成分分析或因子分析来解决共线性问题。
+
+## 后处理偏差
+
+我们通常会担心模型中漏掉某个变量，造成遗漏变量的偏差，但有时候我们也会错误的添加过多变量，比如一个变量是其他变量导致的结果，如果把这些变量都纳入模型，就会出现后处理偏差。后处理偏差源于试验设计，但是也适用于观察性研究。
+
+下面是后处理偏差的一个例子，你在温室中种了很多植物，你想知道不同抗真菌剂处理的土壤对植物生长的影响大小。一般真菌的存在会限制植物的生长。把植物在不同真菌剂处理的土壤中，过一段时间测量生长高度和土壤中有没有真菌存在。这儿有4个变量：初始高度、终止高度、抗真菌处理、真菌是否存在。终止高度是我们预测变量，那么剩下的3个变量都应该包含在我们的模型中吗？显然不是的，不应该包含"真菌是否存在"这一因素，如果包含了，就会造成后处理偏差。下面我们通过模拟来说明这个问题。
+
+```{r}
+N<- 100    #植株数目
+h0<- rnorm(N,10,2)  #模拟初始植株高度 ，产生100个均值为10，标准差为2的随机数
+head(h0)
+```
+
+分配不同的处理，模拟真菌情况和生长
+
+函数形式：$rep(x, time = , length = , each = ,)$
+
+参数说明：
+
+$x$：代表的是你要进行复制的对象，可以是一个向量或者是一个因子。
+$times$：代表的是复制的次数，只能为正数。负数以及NA值都会为错误值。复制是指的是对整个向量进行复制。
+$each$：代表的是对向量中的每个元素进行复制的次数。
+$length.out$：代表的是最终输出向量的长度。
+
+```{r}
+treatment<- rep(0:1,each=N/2)   #是否抗真菌处理
+head(treatment)
+```
+
+```{r}
+fungus<- rbinom(N,size=1,prob=0.5-treatment*0.4) #真菌是否存在
+head(fungus)
+```
+
+```{r}
+h1<- h0+rnorm(N,5-3*fungus)   #终止高度
+head(h1)
+```
+
+组成数据框
+
+```{r}
+d<- data.frame(h0=h0,h1=h1,treatment=treatment,fungus=fungus)
+```
+
+拟合模型
+
+```{r}
+m5.13<- map(
+  alist(
+    h1 ~ dnorm(mu,sigma),
+    mu <- a+bh*h0+bt*treatment+bf*fungus,
+    a ~ dnorm(0,100),
+    c(bh,bt,bf) ~ dnorm(0,10),
+    sigma ~ dunif(0,10)  
+  ),
+   data=d)
+precis(m5.13)
+```
+
+这儿处理变量bt很小，而真菌是否存在bf斜率很大，也就是说处理不处理对植物生长高度影响不大，真菌是否存在才是关键影响因素。这儿的问题是，"有没有真菌存在"是抗真菌处理的结果，也就是有没有真菌是一个后处理变量。所以说，上面的模型并不能够回答我们想要的问题。所以我们把真菌是否存在这一因素从模型中剔除，如下：
+
+```{r}
+m5.14<- map(
+  alist(
+    h1 ~ dnorm(mu,sigma),
+    mu<- a+bh*h0+bt*treatment,
+    a ~ dnorm(0,100),
+    c(bh,bt) ~ dnorm(0,10),
+    sigma ~ dunif(0,10)
+  ),
+   data=d)
+precis(m5.14)
+```
+
+这时可以看到，处理因素斜率bt变得很大了，也就是是否用真菌处理土壤对植物生长高度有较大的影响。之前我们把真菌因素纳入模型中，实际上屏蔽了处理因素的作用。在这种试验设计中，很容易意识到哪些是后处理因素，但是在一些观察研究中，识别后处理因素就不这么容易了。
+
+# 分类变量
+
+有些变量并不是连续的，而是分类变量，比如在上面关于奶水的数据中，clade变量有四种：猿类、原猴类、新世界猴和旧世界猴。如何在多元线性模型中使用分类变量呢？下面我们分为二分类变量和多分类变量来看。
+
+## 二分类变量
+
+最常见的二分类变量是雄性和雌性。我们用Howell1数据集中的性别作为二分类变量研究其和身高的关系。这儿我们使用了哑变量，性别为"male"的为1，否则为0.当然，也可以反过来设成0和1，不影响最终的结果。模型拟合和连续变量没有太大变化。
+
+```{r}
+data(Howell1)
+d<-Howell1
+str(d)
+```
+
+```{r}
+m5.15<- map(
+  alist(
+    height ~ dnorm(mu,sigma),
+    mu<- a+bm*male,
+    a ~ dnorm(178,100),
+    bm ~ dnorm(0,10),
+    sigma ~ dunif(0,50)
+  ),
+   data=d)
+```
+
+```{r}
+precis(m5.15)
+```
+
+在模型解释上，与连续性变量略有不同，这儿截距$\alpha$是女性身高的平均值，截距$\beta_m$表示男性和女性身高的差异。所以我们可以得到男性的身高平均值：$\alpha+\beta_m$.通过抽样，我们还可以估算出男性平均身高的区间。
+
+```{r}
+#因为参数$\alpha$和\beta_m相关，所以不能直接将precis输出中两个参数估计置信区间端点相加得到其求和的置信区间，而是直接从后验分布中抽取样本
+post<- extract.samples(m5.15)
+mu.male<- post$a+post$bm
+PI(mu.male)
+```
+
+## 多类别
+
+当模型变量是k分类变量时，我们常常设立k-1个哑变量。每一个哑变量分别用0和1表示，而剩余的一个没有设哑变量的分类变量值则成为了模型截距。再来看物种类别和奶水含量的例子。类别clade变量有四种：猿类、原猴类、新世界猴和旧世界猴，这时需要3个哑变量，所以我们把原猴类、新世界猴和旧世界猴作为哑变量处理，而猿类由截距表示。
+
+```{r}
+data(milk)
+d<-milk
+unique(d$clade)#unique()函数：返回参数数组中所有不同的取值，并按照从小到大的顺序的进行排列
+```
+
+设定3个哑变量
+
+```{r}
+d$clade.NWM<- ifelse(d$clade=="New World Monkey",1,0)#只有属于New World Monkey的样本对应的名义变量取值是1
+d$clade.OWM<- ifelse(d$clade=="Old World Monkey",1,0)
+d$clade.S<- ifelse(d$clade=="Strepsirrhine",1,0)
+```
+
+模型拟合就当做普通的多元线性模型拟合就好：
+
+```{r}
+m5.16<- map(
+  alist(
+    kcal.per.g ~ dnorm(mu,sigma),
+    mu<- a+b.NWM*clade.NWM+b.OWM*clade.OWM+b.S*clade.S,
+    a ~ dnorm(0.6,10),
+    b.NWM ~ dnorm(0,1),
+    b.OWM ~ dnorm(0,1),
+    b.S ~ dnorm(0,1),
+    sigma ~ dunif(0,10)
+  ),
+   data=d)
+```
+
+```{r}
+precis(m5.16)
+```
+
+截距$\alpha$表示猿类奶水能量含量平均值，根据截距大小可以判断新世界猴奶水能量含量比猿类高0.17，旧世界猴奶水能量含量比猿类高0.24，原猴类比猿类少0.04。
