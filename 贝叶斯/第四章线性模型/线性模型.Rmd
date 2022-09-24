@@ -1,0 +1,1032 @@
+---
+title: "线性回归"
+author: "侯琦"
+date: "2021/10/15"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    self_contained: no
+---
+
+# 为什么人们认为正态分布是常态
+
+**例1**
+
+（1）假设有 1000 人站在足球场的中线
+
+（2）他们每个人掷硬币16次，如果硬币正面朝上，则向左移动，如果反面朝上，则向右移动
+
+（3）测量每个人离中长线的距离，能得到距离的总体分布，将接近正态分布或者高斯分布
+
+## 相加得到正态分布
+
+基于上面的例子，我们模拟这个分布。为了避免大家认为其他特别因素导致正态分布的结果，故先生成一列长度为16的随机向量，每个元素取值在[-1,1]之间，表示每次挪步。将这16个数相加得到最终位置。重复模拟1000次。用代码表示为：
+
+```{r}
+pos <- replicate(1000,sum(runif(16,-1,1)))#runif()生成0-1区间内服从正态分布的随机数，replicate(次数，函数)将输入的表达式重复数次
+pos[1:6]
+```
+
+```{r}
+#距离分布可视化
+plot(density(pos))#绘制密度图，density()对pos求密度
+```
+
+正态分布来源于随机扰动项的相加，观测叠加的过程可以将随机扰动相互抵消，故足球场随机游走实验结果是一个正态分布。
+
+## 通过相乘得到正态分布
+
+相乘转化成相加（以两个增长效应10%的位点相乘为例）：
+
+1.1*1.1 = 1.21 
+
+$(1+0.1)*1+(1+0.1)*0.1 \approx 1.1+1*0.1 = 1.2$
+
+**例2**：
+
+（1）生物体的生长速度受十几个基因座的影响，每个基因座都有几个编码更多生长的等位基因
+
+（2）假设有12个基因座相互影响，并且每一个都增加一个百分比的增长
+
+（3）因此，它们的效果是相乘而不是相加
+
+（4）下面是采样增长率的模拟
+
+（5）这种分布近似正态分布，因为小数的乘法与加法近似相同
+
+```{r}
+#单个增长率
+library(rethinking)
+prod (1+runif(12,0,0.1))#prod()返回参数中元素乘积，抽取了12个1到1.1之间的随机生长率
+```
+
+```{r}
+#10000个增长率
+growth <- replicate(10000,prod(1+runif(12,0,0.1)))
+#绘制密度图
+dens(growth,norm.comp=TRUE)
+```
+
+由于相乘的形式可以转换成相加，故结果仍然服从正态分布。
+
+## 通过相乘取对数得到正态分布
+
+**例3**：将例2中的乘积取对数
+```{r}
+log.big <- replicate(1000 , log(prod(1+runif(12,0,0.5))))
+dens(log.big,norm.comp=TRUE)
+```
+
+
+$$log(xy) = log(x) + log(y)$$
+对相乘的形式取对数后又变成相加的形式，故仍服从正态分布。
+
+## 使用高斯分布
+
+1.钟型曲线分布在现实生活中很常见，如上述的三个例子，其本质都是不同变异的加和，而大量加和表现出来正态分布。
+
+2.建模带来方便，仅需描述均值和方差即可，不需做其他过多的假设。
+
+# 身高的高斯模型
+
+本部分内容将以Howell1数据为例，该数据包含了544名不同年龄性别人的身高和体重情况。我们本章的主要内容就是对身高和体重建立线性模型。
+
+## 数据
+
+可以通过下面的代码载入数据，并查看数据分布情况。
+
+```{r}
+library(rethinking)
+data(Howell1)#载入纳米比亚桑人部落人口数据
+d <- Howell1
+str(d)
+plot(d$height , d$weight)
+```
+
+```{r}
+d2 <- d[d$age >=18, ] #352个成年人的身高和体重数据
+head(d2)
+plot(d2$height , d2$weight)
+```
+
+## 身高的模型
+
+先查看身高的分布情况
+
+```{r}
+dens(d2$height)#绘制身高的密度图
+```
+
+
+通过绘制身高分布图，我们可以看到其服从高斯分布，故可以认为当前假设模型的似然函数是高斯分布函数。由于不同的均值和标准差对应不同的高斯分布，故有很多个高斯分布。写出基本模型并计算每个均值和方差组合的可能性。用下面的方式定义身高的正态分布：
+
+$$似然函数：h_i\sim Normal(\mu,\sigma)$$
+$$\mu的先验：\mu\sim Normal(178,20)$$
+$$\sigma的先验：\sigma\sim Uniform(0,50)$$
+
+$\mu$和$\sigma$的先验概率分布曲线：
+
+```{r}
+curve(dnorm(x, 178, 20),from = 100,to = 250)#dnorm()计算正态分布概率密度函数值，curve(纵坐标，横坐标范围)画图函数，$\mu$先验分布曲线
+```
+
+通过$\mu$的先验分布曲线可以得到平均身高几乎肯定在140cm-220cm之间。
+
+```{r}
+curve(dunif(x,0,50),from=-10 ,to=60)#方差的分布曲线，dunif(x,min,max)分布密度函数
+```
+
+对$\sigma$的先验概率分布采用了均匀分布，即身高变异在0-50之间均匀分布。最大值50意味着将有95%的个体分布在均属加减100cm范围以内，这是一个相当宽的范围了。
+
+下面是通过10000次抽样对上面模型概率分布的估计：
+
+```{r}
+sample_mu <- rnorm(10000, 178, 20)#rnorm(n,μ,σ) ：表示在均数为μ，标准差为σ的正态分布，进行n次随机抽样
+sample_sigma <- runif(10000, 0, 50)
+prior_h <- rnorm(10000, sample_mu, sample_sigma)
+dens(prior_h)
+```
+
+上图的概率分布是我们未加入任何观测数据的情况下，完全基于先验假设建立的。
+
+## 网格逼近后验分布
+
+**网格逼近**：
+
+1.定义：通过将参数区域划分成有限个网格逼近连续的后验分布，对于每一个参数的取值p'，只需要计算后验概率，即p'对应的先验概率×似然函数值，在每一个网格上取一个参数值计算相应的后验概率能够大致逼近后验分布。
+
+2.步骤：
+
+      （1）定义网格
+
+      （2）对每个参数值计算先验概率
+      
+      （3）对每个参数值计算似然函数值
+      
+      （4）将每个参数对应的先验概率×似然函数值＝没有标准化的后验概率
+      
+      （5）通过除以所有后验概率取值和对应后验概率分布进行标准化
+
+3.公式：
+$$Pr(\mu,\sigma\mid h)=\frac{\Pi_iNormal(h_i\mid\mu,\sigma)Normal(\mu\mid178,20)Uniform(\sigma\mid0,50)}{\iint\Pi_iNormal(h_i\mid\mu,\sigma)Normal(\mu\mid178,20)Uniform(\sigma\mid0,50)d\mu d\sigma}$$
+$$Pr(\mu,\sigma\mid h)\propto\Pi_iNormal(h_i\mid\mu,\sigma)Normal(\mu\mid178,20)Uniform(\sigma\mid0,50)$$
+
+4.代码实现
+
+我们分别将两个参数设定网格，其中均数从140-160，设置200个网格；标准差从4-9，设置200个网格。所以我们有了200*200 =40000个参数组合。然后分别对每一个组合进行似然估计。
+
+（1）定义网格
+
+```{r}
+
+#seq()随机生成一组间隔相等的数，200个数范围在140-160 
+mu.list <- seq(from=140,to=160,length.out=200)
+head(mu.list)
+
+#生成200个标准差，范围在4-9
+sigma.list <- seq(from=4,to=9,length.out=200)
+head(sigma.list)
+
+#创建均值和方差的矩阵
+post <- expand.grid(mu=mu.list,sigma=sigma.list)
+head(post)
+```
+
+（2）对每个参数值计算似然函数值
+
+$$似然函数：L=\Pi_iNormal(h_i\mid\mu,\sigma)=\Pi_{i=1}^{352}\frac{1}{\sqrt{2\pi}\sigma}e^\frac{-(h_i-\mu)^2}{2\sigma^2}$$
+$$LL=log(L)=\Sigma_{i=1}^{352}log(\frac{1}{\sqrt{2\pi}\sigma}e^\frac{-(h_i-\mu)^2}{2\sigma^2})$$
+
+
+```{r}
+#计算似然函数值LL
+#sapply(list,function)返回通过将函数应用于数组或矩阵的边距而获得的向量、数组或值列表
+#dnorm(x, mean = 0, sd = 1, log = FALSE) 的返回值是正态分布概率密度函数值
+#pnorm(q, mean = 0, sd = 1, lower.tail = TRUE, log.p = FALSE) 返回值是正态分布的分布函数值
+#qnorm(p, mean = 0, sd = 1, lower.tail = TRUE, log.p = FALSE) 的返回值是给定概率p后的下分位点
+#rnorm(n, mean = 0, sd = 1) 的返回值是n个正态分布随机数构成的向量
+post$LL <- sapply(1:nrow(post),function(i) sum(dnorm(d2$height,mean=post$mu[i],sd=post$sigma[i],log = TRUE)))
+head(post$LL)
+```
+
+（3）将每个参数对应的先验概率×似然函数值＝没有标准化的后验概率
+
+$$prod=\Pi_iNormal(h_i\mid\mu,\sigma)Normal(\mu\mid178,20)Uniform(\sigma\mid0,50)$$
+$$log(prod) = LL+log(Normal(\mu\mid178,20))+log(Uniform(\sigma\mid0,50))$$
+
+```{r}
+#似然函数LL和先验相乘，由于取了对数故转变为相加
+post$prod <- post$LL+dnorm(post$mu,178,20,TRUE)+dunif(post$sigma,0,50,TRUE)
+head(post$prod)
+```
+
+```{r}
+#因为单个点对应的值太小了，如直接转化得到一列有0组成的向量，故通过对数尺度下的取值用最大对数值重新标度化
+post$prob <- exp(post$prod - max(post$prod))
+max(post$prod)
+head(post$prob)
+```
+
+(4)展示网格逼近的结果
+
+```{r}
+#最大后验概率所对应的均值为154.5279，方差为7.743719
+max(post$prob)
+post[which(post$prob == 1),]
+```
+
+(5)结果可视化
+
+```{r}
+#contour()画等高线的函数
+contour_xyz(post$mu, post$sigma, post$prob,xlim=c(153,156),ylim = c(7,8.5))
+```
+
+## 从后验分布中抽取样本
+
+用后验分布的样本来研究后验分布，可以使用概率抽样的方式来描述后验分布，在后验概率按照概率post$prob中进行10000次概率抽样，我们得到均数的后验概率分布sample.mu和标准差后验概率分布sample.sigma。
+
+(1)先在post中抽取10000行
+```{r}
+#抽样函数：sample(对post的行进行抽样，抽取10000个样本，重复抽样，按照概率)
+#sample(x, size, replace = FALSE, prob = NULL)
+sample.rows <- sample(1:nrow(post),size=1e4,replace=TRUE,prob = post$prob)
+head(sample.rows)
+```
+
+(2)抽取到的行所对应的mu存入sample.mu中
+```{r}
+sample.mu <- post$mu[sample.rows]
+head(sample.mu)
+```
+
+(3)抽取到的行所对应的sigma存入sample.sigma中
+```{r}
+sample.sigma <- post$sigma[sample.rows]
+head(sample.sigma)
+```
+
+(4)身高数据后验分布样本散点图
+```{r}
+#plot(横坐标，纵坐标，点的大小，点的形状，透明度参数)
+plot(sample.mu,sample.sigma,cex=0.5,pch=16,col=col.alpha(rangi2,0.1))
+```
+
+上图能够反映出$\mu$和$\sigma$所集中的区域
+
+```{r}
+#样本均值的密度函数
+dens(sample.mu)
+```
+
+```{r}
+#样本方差的后验分布
+dens(sample.sigma)
+```
+
+可以看到这些密度分布接近正态分布，但看起来并不是太美观，主要是我们的网格粒度太大，我们可以增加网格密度，但是这样会带来很大的计算压力。
+
+## 用map拟合模型
+
+网格逼近缺点：随着参数的增加，需要计算网格的数目会增加很多，计算量太大，无法适应模型复杂度的增长。
+
+**二项逼近**（高斯分布的对数是抛物线，是个二次函数）
+
+1.定义:一般情况下，后验分布峰顶周围的区域接近高斯分布，故可以用高斯分布近似后验分布。
+
+2.map()函数：根据提供的函数对指定的序列做映射。通俗地讲就是以参数序列中的每个元素分别调用参数中的函数（func（）），把每次调用后返回的结果保存到返回值中，可以定义许多不同的回归模型。 
+
+3.步骤：
+
+（1）寻找众数（MAP）
+
+（2）再找到后验分布的峰顶，估计峰顶的曲率。（标准差，通过海塞矩阵（后验分布的对数对参数的二阶导数组成的矩阵）计算出来的）
+      
+4.目的：
+
+通常认为身高后验概率分布是正态分布的，所以我们只要找到后验概率的两个参数$\mu$和$\sigma$就达到我们的目的了。
+
+5.求解$\mu$,$\sigma$过程
+
+**回顾BFGS**
+
+(1)基本原理：优化问题是最小化f(x),其中x是一个向量，f是一个可微的标量函数，该算法从最优值的初始估计$x_0$开始，通过利用曲率信息对梯度进行预处理来确定下降方向，直到找到满足条件的值。
+
+(2)二维泰勒展开公式：
+$$f(x,y) \approx f(x_{k+1},y_{k+1})+f'_x(x_{k+1},y_{k+1})(x-x_{k+1})+f'_y(x_{k+1},y_{k+1})(y-y_{k+1})+ \frac{1}{2}f''_{xx}(x_{k+1},y_{k+1})(x-x_{k+1})^2+\\
+\frac{1}{2}f''_{xy}(x_{k+1},y_{k+1})(x-x_{k+1})(y-y_{k+1})+\frac{1}{2}f''_{yx}(x_{k+1},y_{k+1})(x-x_{k+1})(y-y_{k+1})+\frac{1}{2}f''_{yy}(x_{k+1},y_{k+1})(y-y_{k+1})^2$$
+
+令$$ \nabla f(x_{k+1},y_{k+1}) \left[
+ \begin{matrix}
+   \ x-x_{k+1} \\
+   \ y-y_{k+1}
+  \end{matrix}
+  \right]   = \left[
+ \begin{matrix}
+   \ f'_x(x_{k+1},y_{k+1}) \\
+   \ f'_y(x_{k+1},y_{k+1})
+  \end{matrix}
+  \right]
+  \left[
+ \begin{matrix}
+   \ x-x_{k+1} \\
+   \ y-y_{k+1}
+  \end{matrix}
+  \right]
+ $$ 
+ $$
+\frac{1}{2}\left[
+ \begin{matrix}
+   \ x-x_{k+1} \\
+   \ y-y_{k+1}
+  \end{matrix}
+  \right]^TH_f \left[
+ \begin{matrix}
+   \ x-x_{k+1} \\
+   \ y-y_{k+1}
+  \end{matrix}
+  \right]= \frac{1}{2}\left[
+ \begin{matrix}
+   \ x-x_{k+1}\ ,y-y_{k+1} 
+  \end{matrix}
+  \right]
+  \left[
+ \begin{matrix}
+   \ f''_{xx}\ f''_{xy}\\
+   \ f''_{yx}\ f''_{yy}
+  \end{matrix}
+  \right]
+\left[
+ \begin{matrix}
+   \ x-x_{k+1} \\
+   \ y-y_{k+1}
+  \end{matrix}
+  \right]
+$$
+转换为矩阵形式：
+
+$$f(x,y) = f(x_{k+1},y_{k+1})+\nabla f(x_{k+1},y_{k+1}) \left[
+ \begin{matrix}
+   \ x-x_{k+1} \\
+   \ y-y_{k+1}
+  \end{matrix}
+  \right]+\frac{1}{2}\left[
+ \begin{matrix}
+   \ x-x_{k+1} \\
+   \ y-y_{k+1}
+  \end{matrix}
+  \right]^TH_f \left[
+ \begin{matrix}
+   \ x-x_{k+1} \\
+   \ y-y_{k+1}
+  \end{matrix}
+  \right]$$
+  
+令 $$X = \left[
+ \begin{matrix}
+   \ x \\
+   \ y
+  \end{matrix}
+  \right]，X_{k+1} = \left[
+ \begin{matrix}
+   \ x_{k+1} \\
+   \ y_{k+1}
+  \end{matrix}
+  \right]$$
+
+上式转化为： $$
+f(X) = f(X_{k+1})+ \nabla f(X_{k+1})(X-X_{k+1})+\frac{1}{2}(X-X_{k+1})^TH_f(X-X_{k+1})$$
+
+对上述式子两侧求梯度，令其等于零，再进行整理得到二元函数的牛顿迭代公式： $$
+X_{k+1} = X_k-H^{-1}_f(X_k)g(X_k) = X_k-H^{-1}_f(X_k) \nabla f(X_{k})
+ $$
+$$\nabla f(X_{k})表示X_k点处的梯度值，H_f(X_k)表示在该点的二阶梯度，迭代公式的步长取决于海塞矩阵的逆和梯度值$$
+
+(3)BFGS算法迭代公式：
+
+$X_{k+1} = X_k-B_k^{-1}(X_k)g(X_k) = X_k-B_k^{-1}(X_k) \nabla f(X_{k})$
+
+其中$B^{-1}_{k+1}=(E-\frac{S_k g^T_k}{S^T_k gk})B_k^{-1}(E-\frac{S_k g^T_k}{S^T_k gk})+\frac{S_kS_k^T}{S_k^TY_k}$
+
+(4)算法步骤：
+
+输入：目标函数f(x),精度阈值$\varepsilon$介于0-1之间
+
+输出：使得f(x)达到极小值的x
+
+a.初始化$x_0\in R^n,B_0(初始点海塞矩阵的逆矩阵),令K=0$
+
+b.计算梯度$g_k=\bigtriangledown f(x_k)$,假如$||g_k||\le\varepsilon$,则在此点处梯度的值接近于0，则达到极值点，停止迭代
+
+c.计算搜索方向：$d_k=-B^{-1}_kg_k$
+
+d.一维搜索：求步长$\lambda_k$,使得$f(x_k+\lambda_kd_k)=minf(x_k+\lambda_kd_k)$
+
+e.计算迭代点：$S_k=\lambda_kd_k,X_{k+1}=X_k+S_k$
+
+f.计算$g_{k+1}$,假如$||g_{k+1}||\le\varepsilon$则停止计算，得到近似解$X=X_{k+1}$,否则计算$B_{k+1}^{-1}=(I-\frac{S_k Y_k^T}{S_k^TY_k})B_k^{-1}(I-\frac{S_k Y_k^T}{S_k^TY_k})+\frac{S_kS_k^T}{S_k^TY_k}$
+
+其中，$Y_K=g_{k+1}-g_{k}$
+
+g.k=k+1,返回第三步
+
+(5)代码实现
+
+**例**：$f(x,y) = 60-10x-4y+ x^{2} + y^{2} -xy$
+
+**牛顿法**
+
+```{r}
+#1.目标函数及函数
+funab <- expression(60-10*x-4*y+x^2+y^2-x*y)
+fun1a <- D(funab,"x")
+fun2a <- D(fun1a,'x')
+fun1b <- D(funab,'y')
+fun2b <- D(fun1b,'y')
+fun2ab <- D(fun1a,'y')
+fun2ba <- D(fun1b,'x') 
+
+fun0 <- function(x,y) eval(funab)
+fun1 <- function(x,y) eval(fun1a)
+fun2 <- function(x,y) eval(fun2a)
+fun3 <- function(x,y) eval(fun1b)
+fun4 <- function(x,y) eval(fun2b)
+fun5 <- function(x,y) eval(fun2ab)
+fun6 <- function(x,y) eval(fun2ba)
+
+#2.计算海塞矩阵和海塞矩阵的逆矩阵(所给目标函数的海塞矩阵是个常数值)
+hess <- matrix(c(2 , -1 , -1 ,2), nrow=2, ncol=2, byrow=TRUE); print(hess)#海塞矩阵
+hess1 <- solve(hess);print(hess1)#海塞矩阵的逆矩阵
+
+#3.设置初始迭代点及其终止条件
+X0 <- matrix(c(0,0), nrow=2, ncol=1, byrow=TRUE); print(X0)
+err <- 0.01#定义退出条件的最小值
+
+#4.第一次迭代
+f1_1 <- fun1(X0[1,1],X0[2,1])
+f2_1 <- fun3(X0[1,1],X0[2,1])
+F1 <- matrix(c(f1_1,f2_1), nrow=2, ncol=1, byrow=TRUE); print(F1)#梯度矩阵
+X1 <- X0 - hess1%*%F1 #第一次迭代结果
+
+X <-  X0-X1
+b <- sqrt(X[1,1]^2+X[2,1]^2)
+b <=  err#验证第一次迭代是否终止
+
+#5.设置迭代次数范围
+i <- 1
+i_max <- 1000
+prior <- X0 
+new <- X1
+number <- matrix(0,2,3)
+err <- 0.01#定义退出条件的最小值
+
+#6.牛顿迭代法寻找二元函数最小值模拟过程
+while(i < i_max){
+  number[,i] <- prior[,1]
+  f1 <- fun1(prior[1,1],prior[2,1])
+  f2 <- fun3(prior[1,1],prior[2,1])
+  g <- matrix(c(f1,f2), nrow=2, ncol=1, byrow=TRUE)
+  new <- prior - hess1%*%g
+  d <- prior - new
+  prior <- new
+  i <- i+1
+  if(sqrt(d[1,1]^2+d[2,1]^2) < err){
+    break
+  }
+}
+i
+number
+new
+```
+
+```{r}
+#7.结果可视化
+library(rgl)
+x1 <- c(0,2,4,6,8,8,9,10,12,14)
+y1 <- c(0,2,4,6,8,6,9,10,12,14)
+z1 <- fun0(x1,y1) 
+plot3d(x1,y1,z1,col="red", size=5)
+```
+**BFGS方法**
+
+```{r}
+#1.目标函数及定义的函数
+
+funab <- expression(60-10*x-4*y+x^2+y^2-x*y)
+fun1a <- D(funab,"x")
+fun2a <- D(fun1a,'x')
+fun1b <- D(funab,'y')
+fun2b <- D(fun1b,'y')
+fun2ab <- D(fun1a,'y')
+fun2ba <- D(fun1b,'x') 
+
+fun0 <- function(x,y) eval(funab)
+fun1 <- function(x,y) eval(fun1a)
+fun2 <- function(x,y) eval(fun2a)
+fun3 <- function(x,y) eval(fun1b)
+fun4 <- function(x,y) eval(fun2b)
+fun5 <- function(x,y) eval(fun2ab)
+fun6 <- function(x,y) eval(fun2ba)
+
+#2.设置初始迭代点、初始B0（即海塞矩阵的逆hess1）及其终止条件
+X0 <- matrix(c(0, 0),nrow=2, ncol=1, byrow=TRUE); print(X0)
+f2 <- fun2(X0[1,1],X0[2,1]) 
+f5 <- fun5(X0[1,1],X0[2,1]) 
+f6 <- fun6(X0[1,1],X0[2,1]) 
+f4 <- fun4(X0[1,1],X0[2,1]) 
+hess <- matrix(c(f2,f5,f6,f4), nrow=2, ncol=2, byrow=TRUE); print(hess)
+hess1 <- solve(hess)
+err <- 0.0001
+
+#3.第一次迭代
+f1 <- fun1(X0[1,1],X0[2,1]) 
+f3 <- fun3(X0[1,1],X0[2,1]) 
+g0 <- matrix(c(f1,f3), nrow=2, ncol=1, byrow=TRUE)#梯度矩阵
+X1 <- X0 - hess1%*%g0 #第一次迭代结果
+X <- X1-X0 
+b <- sqrt(X[1,1]^2+X[2,1]^2)
+b <=  err#验证第一次迭代是否终止
+
+#4.第二次迭代的初始矩阵的逆B1
+f11 <- fun1(X1[1,1],X1[2,1])
+f31 <- fun3(X1[1,1],X1[2,1])
+g1 <- matrix(c(f11,f31), nrow=2, ncol=1, byrow=TRUE)
+y0 <- g1-g0
+S0 <-  -hess1%*%g0
+q1 <- S0%*%t(y0)
+q2 <- 1/as.vector(t(S0)%*%y0)
+q3 <- S0%*%t(S0)
+E <- matrix(c(1,0,0,1), nrow=2, ncol=2, byrow=TRUE)
+B1 <- (E-q2*q1)%*%hess1%*%(E-q2*q1)+q3*q1
+
+#5.初始条件
+i <- 2
+i_max <- 1000
+number <- matrix(0,2,4)
+number[,1] <- X0[,1] 
+number[,2] <- X1[,1]
+X2 <- X1-B1%*%g1
+new <- X2
+err <- 0.0001#定义退出条件的最小值
+
+#6.循环求解
+while(i < i_max){
+  number[,i+1] <- new[,1]
+  f1 <- fun1(number[1,i],number[2,i])
+  f3 <- fun3(number[1,i],number[2,i])
+  g0 <- matrix(c(f1,f3), nrow=2, ncol=1, byrow=TRUE)
+  f11 <- fun1(new[1,1],new[2,1])
+  f33 <- fun3(new[1,1],new[2,1])
+  g1 <- matrix(c(f11,f33), nrow=2, ncol=1, byrow=TRUE)
+  s <- new-number[,i]
+  y <- g1-g0
+  q1 <- s%*%t(y)
+  q2 <- 1/as.vector(t(s)%*%y)
+  q3 <- s%*%t(s)
+  E <- matrix(c(1,0,0,1), nrow=2, ncol=2, byrow=TRUE)
+  B1 <- (E-q2*q1)%*%B1%*%(E-q2*q1)+q3*q1
+  new <- number[,i] - B1%*%g1
+  prior <- new
+  i <- i+1
+  if(sqrt(s[1,1]^2+s[2,1]^2) < err){
+    break
+  }
+}
+i
+number
+new
+```
+
+(6)求解$\mu$和$\sigma$
+
+**步骤**
+
+a.目标函数为:$f(\mu,\sigma)=\Pi_iNormal(h_i\mid\mu,\sigma)Normal(\mu\mid178,20)Uniform(\sigma\mid0,50)$
+
+b.初始迭代点：X0=[$\mu=mean(d2)$,$\sigma=sd(d2)$];计算初始点处海塞矩阵的逆矩阵hess1及其一阶导数g1;通过牛顿迭代法的迭代公式计算出第一次迭代点X1(X1 = X0-hess1*g1)
+
+c.计算第二次迭代用来替换海塞矩阵逆矩阵的B1，根据BFGS迭代公式求得X2(X2 = X1-B1*g1)
+
+d.构造循环，求出最优解$\mu$,$\sigma$
+
+
+**代码实现**
+
+a.载入数据，选出对应成年人的观测值
+```{r}
+library(rethinking)
+data("Howell1")
+d <- Howell1
+d2 <- d[d$age >= 18,]
+```
+
+b.定义模型
+```{r}
+flist <- alist(
+  height ~ dnorm(mu,sigma),
+  mu ~ dnorm(178,20),
+  sigma ~ dunif(0,50)
+)
+```
+
+c.纳入数据，求解模型
+```{r}
+m4.1 <- map(flist,data=d2)
+precis(m4.1)
+```
+
+上面我们在假定先验概率的时候，使用的标准差很大，所含有的信息量比较少，先验概率分布很扁平。下面我们使用含有较多先验信息的先验概率，设定比较小的标准差，那么这个时候我们估计的后验概率会怎样？
+
+```{r}
+m4.2 <- map(
+ alist(
+ height ~ dnorm(mu,sigma),
+ mu ~ dnorm(178,0.1),
+ sigma ~ dunif(0,50)
+ ),
+ data = d2
+)
+precis(m4.2)
+```
+
+可以看到，后验概率均值和先验概率均值变得十分接近，靠近178，但是标准差和之前的估计差别很大。实际上，我们并没有修改模型中标准差的先验分布。因为我们修改了先验信息，对先验信息更有信心，在这种情况下，模型为了得到更好的拟合效果，只能增大标准差。所以可以看出，先验信息对模型拟合还是比较大的。所以，我们应该尽量尝试不同的先验信息，评估它们对结果的影响大小。
+
+## 从map拟合结果中抽样
+
+在网格估计中，我们可以通过sample函数在后验概率中进行抽样。但是在二项逼近中，如何抽样呢？
+
+rethinking包直接提供了extract.sample函数，可以直接从模型中进行抽样。如下：
+ 
+```{r}
+#从拟合结果中抽取10000行，2列的数据框post,一列代表$\mu$的取值，另一列代表$\sigma$的取值，extract.sample()表示对多维高斯分布样本抽样
+post <- extract.samples(m4.1,n=1e4)
+head(post)
+```
+进行了10000次抽样，得到了一个包含两个参数组合的数据框。可以比较一下我们抽样结果和模型结果。
+
+```{r}
+#模型结果
+precis(m4.1)
+```
+```{r}
+#抽样结果
+precis(post)
+```
+可以得到两者结果十分接近。
+
+# 添加预测变量
+
+我们上面进行的过程只是针对height一个变量，一个线性模型至少是两个变量。所以，这儿我们加入另一个变量weight。
+
+## 数据
+
+首先我们可以画一下两个变量的散点图，对两个变量的关系有一个直观的感受。
+
+```{r}
+#身高和体重的散点图
+plot(d2$height ~ d2$weight)
+```
+
+从上面的散点图，可以看到，身高和体重两个变量有很明显的相关关系，知道体重，我们就可以预测身高。
+
+## 非贝叶斯线性模型
+
+1.公式：$y=\beta_0+\beta_1x_1+a,其中a是随机误差$ 
+
+2.求参数方法：最常用的最小二乘法
+
+3，最小二乘法公式
+
+$\hat{b}=\frac{\Sigma_{i=1}^n(x_i-\bar{x})(y_i-\bar{y})}{\Sigma_{i=1}^n(x_i-\bar{x})^2}$
+
+$a=\hat{y}-b\hat{x}$
+
+4.代码实现：
+```{r}
+#1.拟合模型
+#lm()用来拟合线性模型，其格式：myfit<-lm(formula,data)，formula表示拟合的模型形式，data是一个数据框
+myfit <- lm(height ~ weight , d2)
+
+#2.展示拟合模型的结果
+coefficients(myfit)
+
+#3.展示95%的置信区间
+confint(myfit)
+
+#4.绘制散点图和一元线性回归图
+plot(d2$weight, d2$height,
+     xlab = "weight(in pounds)",
+     ylab = "height(in inches)")
+abline(myfit)
+```
+
+普通最小二乘法给了我们对输出的单次点估计，我们可以将其解释为给定数据时可能性最大的估计。然而，如果有一个很小的数据集，我们可能希望将估计表示为一个可能值的分布。这就是贝叶斯估计起作用的地方。
+
+## 贝叶斯线性模型
+
+从贝叶斯学派的观点来看，我们使用概率分布而非点估计来构建线性回归。反应变量 y 不是被估计的单个值，而是假设从一个正态分布中提取而来。
+
+线性模型：将身高高斯分布的均值表达成预测变量(体重)和另外一些参数的线性组合。
+
+下面将体重加入到身高的高斯模型中，设x为体重观察变量，观察x的变化对h的影响。
+
+定义模型如下：
+
+$$似然函数：h_i\sim Normal(\mu_i,\sigma)$$
+$$线性模型：\mu_i=\alpha+\beta x_i$$
+$$\alpha的先验分布：\alpha \sim Normal(178,100)$$
+$$\beta的先验分布：\beta \sim Normal(0,10)$$
+$$\sigma的先验分布：\alpha \sim Uniform(0,50) $$
+
+下面我们对上述模型的5个部分进行一一解析。
+
+**似然函数**：和之前身高模型的唯一区别就是$\mu$和h多了一个下标i。因为每一个均值会对应一个不同因变量x，所以加下标是很有必要的。
+
+**线性模型**：均值$\mu$不再是我们需要估计的参数，因为我们使用另外两个参数$\alpha$和$\beta$重建了$\mu$;在第二行我们使用了“=”来描述模型，而不是“~”，这就意味着左右两边是确定性关系，不是概率关系。也就是说，只要我们知道了$\alpha$、$\beta$和x，我们就可以准确的预测$\mu$。
+
+那么$\alpha$、$\beta$又是怎么来的？是我们为了控制均值$\mu$而人为制造出来的。制造这两个参数能够帮助我们回答两个问题；一个是当x=0时，身高会是多少，$\alpha$会回答这个问题，也就是截距；另一个问题是，x每改变一个单位，身高会改变多少？$\beta$可以用来回答这个问题，即斜率。
+
+**先验分布**：上述模型的最后3行描述的是几个参数的先验概率分布。我们使用的都是弱先验概率，但是我们在选择先验概率的时候最好能够尝试不同的先验概率，比较评价它们对模型结果的影响大小。其中，$\beta$的先验概率分布我们选择了均值为0的正态分布，这就意味着，身高和体重是没有关系的。在很多人看来，这么选择有些保守，至少应该选择均匀分布。因为身高和体重肯定有一定的正相关关系。不过注意到这儿，我们使用的标准差很大，为10，所以这个正态分布是一个很平的正态分布，和均匀分布差别不大。当然，如果你把标准差缩小，那么就意味着你的先验概率提供了更过的信息来证明身高和体重没有关系，即斜率为0，这时得到的结果就会很保守了。
+
+## 拟合模型
+
+在map内指定模型的地方整合进新的均值线性模型，然后再确保将新的变量加入到start列表中，下面进行MAP模型拟合：
+
+1.载入数据，选出对应成年人的观测值
+
+```{r}
+library(rethinking)
+data("Howell1")
+d <- Howell1
+d2 <- d[d$age >= 18,]
+```
+
+2.定义模型
+
+```{r}
+m4.3 <- map(
+  alist(
+    height ~ dnorm(mu , sigma),
+    mu <- a+b*weight ,
+    a ~ dnorm(15,100),
+    b ~ dnorm(0,10),
+    sigma ~ dunif(0,50)
+  ),
+data=d2)
+```
+
+其中a代表$\alpha$,b代表$\beta$,weight代表x，$\mu=a+b*weigh$
+
+3.结果展示
+
+模型的解释可以通过数据表格的形式，也可以通过画图的形式。对于一些简单的问题，我们可以直接通过极大后验概率分布值以及其标准差等数据表格的形式来描述，但是当我们有很多参数，或者模型很复杂（如有交互作用的时候），通过极大后验概率分布很难说清楚这些参数是怎样影响我们的结果的。所以，通过画图对模型进行解释是很有必要的。这儿我们还是使用两种方式来解释我们的模型结果。
+
+**(1)表格形式**
+
+```{r}
+precis(m4.3)
+```
+
+这儿我们就得到了模型中3个参数的估计结果。不再对它们的意义进行解释。 
+
+我们还可以的到各个参数之间的相关性：
+
+```{r}
+#参数之间的协相关性
+precis(m4.3,corr=TRUE)
+cov2cor(vcov(m4.3))
+```
+
+由上图可知，$\alpha$和$\beta$呈现了完全负相关，这儿对我们的模型影响不大，它只是说，这两个参数携带有相同的信息，你改变模型的斜率，那么模型的截距也会相应的改变。但是如果在很复杂的模型中，出现了这种比较强相关性，会给模拟拟合带来一定的困难，所以应该尽量避免。
+
+避免强相关性方法：常用的方法就是对数据进行中心化，就是将每一个数据值减去均数，然后我们再拟合模型。如下：
+
+```{r}
+#1.对体重变量进行中心化，每个体重观测值减去体重均值
+d2$weight.c <- d2$weight-mean(d2$weight)
+
+#2.重新拟合模型看看中心化后的变化
+library(rethinking)
+m4.4 <- map(
+  alist(
+    height ~ dnorm(mu,sigma),
+    mu <- a+b*weight.c,
+    a ~ dnorm(178,100),
+    b ~ dnorm(0,10),
+    sigma ~ dunif(0,50)
+  ),
+data=d2)
+precis(m4.4,corr=TURE)
+```
+
+```{r}
+cov2cor(vcov(m4.4))
+```
+
+此时，可以看到$\alpha$和$\beta$的相关系数已经变为0了。在三个参数中，$\alpha$和$\sigma$是没有变的，但是$\alpha$变了，变为了mean(d2$height)。也就是当体重为它的均值的时候，身高位于身高的均值。
+
+**(2)图形形式**
+
+画图不仅能够帮理解后验概率，还能够检查我们的模型假设有没有问题。如果我们的后验概率和我们的观测不一致，就应该回去检查模型，看看哪儿出了问题。
+
+a.画观测图和我们模型中对参数的极大后验概率估计值(MAP拟合结果)
+
+```{r}
+#将MAP的结果添加到散点图上
+plot(height~weight,data=d2)
+#绘制身高体重散点图
+#abline(a,b)绘制回归直线，coef()返回MAP参数估计的向量，用相应的变量名称提取斜率和截距估计 m4.3是二项逼近后得到的各参数的结果
+abline(a = coef(m4.3)["a"],b = coef(m4.3)["b"])
+```
+
+上图中的直线，只是一个参数估计的概率极大值(后验分布给出的所有可能的无限多条直线中最可能的情况)，但是实际上，我们还有很多参数组合（斜率和截距），我们可以从模型中对不同的参数组合进行概率抽样，然后把每一个组合都画出来。
+
+```{r}
+post <- extract.samples(m4.3, n = 200)
+plot(height ~ weight, data = d2)
+for(i in 1:nrow(post)){
+ abline(a = post$a[i], b=post$b[i], col = rgb(0.3,0.3,0.3,0.1))
+}
+```
+
+可以看出，在图的两端，回归线的分布会比中间宽，这主要是因为在中间部分我们有较多的数据观测。另外随这数据量的增大，回归线也越来越集中,只是因为样本量的增大，是我们有足够的信心推断参数的大小。
+
+b.绘制回归区间和等高线
+
+上面的图形很清楚直观的展现了参数的分布情况。比如我说一个人的体重是50Kg，那么你可以通过后验概率抽样，估计出体重为50Kg的人的均数的分布。如下
+
+```{r}
+#抽取一万个二项逼近得到的a,b和标准差
+post <- extract.samples(m4.3)
+
+#当体重为50时，所对应的一万个样本的期望身高
+mu_at_50 <- post$a+post$b*50
+
+#绘制身高的密度图（一万个身高，透明度，纵坐标间隔，横坐标名称）
+dens(mu_at_50,col=rangi2,lwd=2,xlab="mu|weight=50")
+```
+
+```{r}
+#最大后验密度区间
+HPDI(mu_at_50,prob = 0.89)
+```
+
+体重为50Kg时，对应的$\mu$的89%的最高后验密度区间，结果表明，当体重为50Kg时，89%的情况下模型得到的结果在159cm到160cm之间。
+
+上述只是在给定体重为50kg的情况下，期望身高的最大后验密度区间。下面通过link函数对每一个观测估计均值区间。
+
+运用link函数:拟合模型时使用的公式，能够使用map模型拟合结果，从后验分布中抽取样本，计算均值，然后接着从后验分布中抽取样本。
+
+**link函数的工作过程**
+
+```{r}
+#1.抽样，默认抽取10000个
+post <- extract.samples(m4.3)
+
+#2.定义函数
+mu.link <- function(weight) post$a+post$b*weight
+
+#3.体重取值从25Kg-70kg，间隔为1kg，即每间隔1kg估计一次
+weight.seq <- seq(from=25, to=70 , by=1)
+head(weight.seq)
+
+#4.计算每个体重值对应的身高均值
+mu <- sapply(weight.seq , mu.link)
+head(mu)
+```
+
+```{r}
+mu.mean <- apply(mu , 2 , mean)
+head(mu.mean)
+```
+
+```{r}
+mu.HPDI <- apply(mu , 2 , HPDI , prob=0.89)
+head(mu.HPDI)
+```
+
+
+```{r}
+#mu是一个取值的大矩阵，一共有352个人，对每个人的体重，取得1000对a和b，计算其期望身高
+mu <-link(m4.3)
+```
+
+或者我们可以对横坐标设定网格，然后对每一个网格区间估计均值。如下，我们设定了体重区间25-70kg，然后使用link函数每隔1kg进行一次估计。
+
+```{r}
+#1.46个间隔1kg不同体重的取值
+weight.seq <- seq(from=25,to=70,by=1)
+
+#2.计算每个体重值对应的身高均值
+mu <- link(m4.3,data = data.frame(weight=weight.seq))
+str(mu)
+
+#绘制前100个后验样本分布图
+plot(height ~ weight, d2, type = "n")
+for(i in 1:100){
+ points(weight.seq, mu[i,], pch = 16, col = col.alpha(rangi2,0.1))
+}
+```
+
+此外，我们还可以通过shade函数把一定置信区间的参数值在图形中表示出来。比如，下面我们把89%的HPDI区间使用灰色区域展示了出来
+
+```{r}
+#1.计算每个体重对应的后验样本均值和89%的置信区间
+#对mu的每一列求均值，2表示按列，apply()函数最常用的替代for循环的函数
+mu.mean <- apply(mu,2,mean)
+mu.HPDI <- apply(mu,2,HPDI,prob=0.89)
+
+#2.绘制身高和体重散点图
+plot(height~weight,data=d2,col=col.alpha(rangi2,1))
+lines(weight.seq,mu.mean)
+
+#3.添加置信区间
+#shade()绘制置信区间的阴影部分
+shade(mu.HPDI,weight.seq)
+```
+
+总结上述过程：
+
+(1)使用link函数产生针对$\mu$的后验概率分布，默认格式下，是针对模型中的原始观测数据产生$\mu$的分布区间。
+
+(2) 使用mean，HPDI和PI等函数求$\mu$的范围区间。
+
+(3) 使用line或shade等函数将上述区间展现在图形中。
+
+## 在图形中添加预测区间
+
+前面添加的区间只是一个均值的区间，并不是个体的区间，我们仅仅是把$\mu$的不确定性体现出来了，但是对于hi的预测还要考虑$\sigma$的不确定性。设想一下模拟身高，对于每一个体重值，都从一个均数为$\mu$，标准差为$\sigma$的正态分布中抽样，为这个均数和标准差则来自上面的的后验概率分布。经过大量抽样，我们得到的样本不仅包含了后验概率的不确定性（均数的不确定性），也包含了抽样造成的不确定性。下面是使用sim函数在后验概率中抽样，然后求89%的区间。
+
+```{r}
+sim.height <- sim(m4.3, data = list(weight = weight.seq))
+
+height.PI <- apply(sim.height, 2, PI, prob = 0.89)
+
+plot(height ~ weight, d2, col=col.alpha(rangi2, 0.5))
+#画MAP线
+lines(weight.seq, mu.mean)
+#画均值的区间
+shade(mu.HPDI, weight.seq)
+#画预测值区间
+shade(height.PI, weight.seq)
+```
+
+上图中，实线是身高均值的MAP估计对应的回归线；更窄的区域代表身高均值的分布；更宽的表示当前模型条件下群体身高预测的89%的分布区域。
+
+# 多项式回归
+
+前面我们说过，线性模型中的两个参数是我们人为制造的，仅仅因为简便，所以成了我们最常用的模型。当然我们还可以制造其他的参数，只要能够合理的解释我们的模型就足够了。下面我们就尝试多项式模型。 多项式意味着模型中可能会出现二次方、三次方甚至更高次幂，不过模型中自变量始终只有一个。在本例中，该自变量依旧是体重。多项式不常用的原因是我们得到的模型在解释实际问题时，往往不如线性模型那么容易让人理解。常见的多项式模型如下：
+
+$$\mu_i = \alpha + \beta_1x_i + \beta_2x_i^2$$
+
+拟合该模型:首先对自变量体重进行了标准化，然后创建一个平方项，如下:
+
+```{r}
+library(rethinking)
+data("Howell1")
+d <- Howell1
+
+d$weight.s <- (d$weight - mean(d$weight))/sd(d$weight)#对体重标准化
+d$weight.s2 <- d$weight.s^2
+m4.5 <- map(
+ alist(
+ height ~ dnorm(mu, sigma),
+ mu <- a + b1*weight.s + b2*weight.s2,
+ a ~ dnorm(178,100),
+ b1 ~ dnorm(0,10),
+ b2 ~ dnorm(0,10),
+ sigma ~ dunif(0,50)
+ ),
+ data = d
+)
+precis(m4.5)
+```
+
+我们得到了模型中4个参数的估计值。下面请过link函数在模型中抽样求MAP值，通过sim函数在模型中抽样求预测值。然后作图,如下：
+
+```{r}
+#1.计算每个体重对应的后验身高均值，并从中抽取1000个身高均值
+weight.seq <- seq(-2.2,2, length.out = 30)
+pre_dat <- list(weight.s = weight.seq, weight.s2 = weight.seq^2)
+mu <- link(m4.5, data = pre_dat)
+```
+
+```{r}
+#2.计算每个体重对应的身高均值的均值以及89%置信区间，并从中抽取1000个身高值
+mu.mean <- apply(mu, 2, mean)
+mu.PI <- apply(mu, 2, PI, prob = 0.89)
+sim.height <- sim(m4.5, data = pre_dat)
+```
+
+```{r}
+#3.绘制身高和体重的多项式回归图
+height.PI <- apply(sim.height,2, PI, prob = 0.89)
+
+plot(height ~ weight.s, d, col = col.alpha(rangi2, 0.5))
+lines(weight.seq, mu.mean)
+shade(mu.PI, weight.seq)
+shade(height.PI, weight.seq)
+```
+

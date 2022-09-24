@@ -1,0 +1,757 @@
+---
+title: "第七章 交互效应"
+author: "侯琦"
+date: "2022/3/5"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    self_contained: no
+---
+
+# 前景导入
+
+**例题1**
+
+[![bdcN1P.png](https://s4.ax1x.com/2022/03/05/bdcN1P.png)](https://imgtu.com/i/bdcN1P)
+
+结论：观测到的数据都是在存活的条件下，故条件是统计推断最重要的原则之一。
+
+之前的模型都假设每个预测变量对结果变量独立产生影响，本章节在此基础上加上预测变量之间存在相关性的条件。
+
+**交互效应**
+
+定义：一个预测变量的重要性取决于另一个预测变量。
+
+应用：
+
+（1）广义线性模型：即使在没有明确定义变量的交互效应，这些变量在某种情况下也会交互
+
+（2）分层模型：不仅存在交互效应，还能估计这些变化分布的一些特征
+
+**本章内容**：
+
+（1）如何定义交互效应
+
+（2）如何解释交互效应
+
+（3）如何对交互效应进行可视化
+
+# 创建交互效应
+
+一个分类变量和连续变量之间的交互效应：
+
+**例题2**
+
+大部分国家，地理位置与经济落后相关，但非洲地区却有所不同，故下面研究地区崎岖情况与GDP之间的关系（分为非洲地区和非洲之外的地区两类）：
+
+1.非洲地区与其他地区GDP与地势崎岖情况图(结果变量：取对数后的GDP；变量：崎岖因子)
+
+```{r}
+#1.处理数据（去除缺失值，分类）
+
+library(rethinking)
+data("rugged")#243（国家）×51（经济、地理、历史特征等指标）
+d <- rugged#234个国家地势崎岖数据
+
+#(1) 对数GDP
+
+d$log_gdP <- log(d$rgdppc_2000)#取对数由于国与国之间的财富差距大，取对数之后是的差距分布更平均
+head(d$log_gdP)
+table(is.na(d$log_gdP))#64个NA，170个非NA
+
+#(2) 选出那些有GDP观测的国家
+
+dd <- d[complete.cases(d$rgdppc_2000),]#170个国家有观测值的2000年的GDP数据
+
+#(3) 将数据分成非洲国家和非洲以外两部分
+
+d.A1 <- dd[dd$cont_africa == 1,]#非洲 57个非洲国家
+d.A0 <- dd[dd$cont_africa == 0,]#非洲以外地区 121个国家
+```
+
+```{r}
+#2.拟合回归模型
+
+#(1)非洲国家
+
+m7.1 <- map(
+  alist(
+    log_gdP ~ dnorm(mu,sigma),
+    mu <- a + bR*rugged,
+    a ~ dnorm(8,100),
+    bR ~ dnorm(0,1),
+    sigma ~ dunif(0,10)
+  ),
+  data = d.A1
+)
+precis(m7.1)
+
+#(2)非洲以外国家
+
+m7.2 <- map(
+  alist(
+    log_gdP ~ dnorm(mu,sigma),
+    mu <- a + bR*rugged,
+    a ~ dnorm(8,100),
+    bR ~ dnorm(0,1),
+    sigma ~ dunif(0,10)
+  ),
+  data = d.A0
+)
+precis(m7.2)
+```
+
+```{r}
+#3.后验预测可视化
+
+#(1)非洲国家
+
+
+plot(log_gdP ~ rugged , data=d.A1)
+abline( a = coef(m7.1)["a"] , b = coef(m7.1)["bR"] )
+
+#(2)非洲以外国家
+
+plot(log_gdP ~ rugged , data=d.A0)
+abline( a = coef(m7.2)["a"] , b = coef(m7.2)["bR"] )
+```
+
+由上面两个图可知，世界上绝大部分地区，地势越崎岖的国家越贫穷（交通不发达，市场受阻，从而GDP低），但是非洲国家属实让人迷惑（奴隶贸易的影响，GDP影响因素太多）。
+
+**在回归中如何发现并描述这样相反的数据模式？**
+
+上述划分数据分别建模并不是一个好的方法：
+
+（1）参数问题，比如$\sigma$，与是否是非洲国家无关，如果把数据分开，将导致拟合样本减少，从而损坏这些共同参数的估计。
+
+（2）数据是根据cont_africa进行划分的，为了得到划分变量带来的不确定性，必须要将这个变量纳入模型中。
+
+（3）要想通过使用信息法则或者其他方法比较这两个模型，需要这两个模型使用相同的样本拟合，不能人为地将数据划分成不同的部分分别拟合，而是让模型在自己拟合过程中考虑不同的数据。
+
+（4）使用分层模型的时候，考虑不同数据的类别是有好处的
+
+## 添加虚拟变量无效
+
+**如何用一个模型还原上述斜率的变化？**
+
+添加虚拟变量（分类变量：cont_africa）
+
+```{r}
+#1.使用所有的数据对log_GDP和地势的崎岖情况进行简单的线性回归
+
+m7.3 <- map(
+  alist(
+    log_gdP ~ dnorm(mu,sigma),
+    mu <- a + bR*rugged,
+    a ~ dnorm(8,100),
+    bR ~ dnorm(0,1),
+    sigma ~ dunif(0,10)
+  ),
+  data = dd
+)
+precis(m7.3)
+```
+
+```{r}
+#2.添加cont_africa到模型中
+
+m7.4 <- map(
+  alist(
+    log_gdP ~ dnorm(mu,sigma),
+    mu <- a + bR*rugged+bA*cont_africa,
+    a ~ dnorm(8,100),
+    bR ~ dnorm(0,1),
+    bA ~ dnorm(0,1),
+    sigma ~ dunif(0,10)
+  ),
+  data = dd
+)
+precis(m7.4)
+```
+
+```{r}
+#3.通过WAIC比较这两个模型
+compare(m7.3 , m7.4)
+```
+
+通过上面的比较可以得到：m7.4得到的全部的权重，两个模型的WAIC的差值是63，表明与大陆相关的变量捕捉到了样本的某些重要信息,即m7.4优于m7.3，但是这两个模型都没有反应出不同数据上斜率的变化。
+
+```{r}
+#4.对m7.4绘制非洲国家和其他国家的后验分布均值和区间
+
+rugged.seq <- seq(from = -1 , to = 8 , by = 0.25)#37个间隔为0.25的崎岖值
+
+#(1)设定cont_africa = 0,计算非洲之外地区不同地势崎岖观测值对应的均值
+
+mu.Notafrica <- link(m7.4, data=data.frame(cont_africa = 0,rugged = rugged.seq))
+
+#(2)设定cont_africa = 1,计算非洲地区不同地势崎岖观测值对应的均值
+
+mu.Africa <- link(m7.4, data=data.frame(cont_africa = 1,rugged = rugged.seq))
+
+#(3)得到均值和置信区间的总结
+
+mu.Notafrica.mean <- apply(mu.Notafrica,2,mean)
+mu.Notafrica.PI <- apply(mu.Notafrica,2,PI,prob = 0.97)
+mu.Africa.mean <- apply(mu.Africa,2,mean)
+mu.Africa.PI <- apply(mu.Africa,2,PI,prob=0.97)
+```
+
+[![bdgGbF.png](https://s4.ax1x.com/2022/03/05/bdgGbF.png)](https://imgtu.com/i/bdgGbF)
+
+通过上图可以看出地区崎岖程度与经济发展之间的相关性非常弱，非洲国家总体经济发展水平低，总体看两条回归线是平行的，即添加了虚拟变量只是允许模型稍微降低了非洲国家的预测值，并不影响斜率。
+
+## 加入线性交互效应是有效的
+
+引入交互效应，观察斜率的变化（$Y_i与\beta_R$）：
+
+1.定义模型
+
+(1)上一小节中的模型
+
+$$似然函数：Y_i \sim  Normal(\mu_i,\sigma)$$
+$$\mu的线性模型：\mu_i = \alpha+\beta_R R   _i+\beta_AA_i$$
+
+(2)加入交互效应定义的模型
+
+$$似然函数：Y_i \sim  Normal(\mu_i,\sigma)$$
+$$\mu的线性模型：\mu_i = \alpha+\gamma_iR   _i+\beta_AA_i$$
+$$斜率的线性模型：\gamma_i = \beta_R+\beta_{AR}A_i$$
+
+$\gamma_i$：表示GDP和地势崎岖度量之间的关系，即地势崎岖情况和是否是非洲国家这两个变量之间的交互效应（线性交互）
+
+$\beta_{AR}$:定义了A与R之间关系的强弱，当其为0时，表示回到了（1）定义的模型；当其大于0时，表示非洲国家对应的GDP和崎岖程度之间关系的斜率更大；当其小于0时，表示非洲国家对应的斜率更小
+
+$A_i=0$:表示非洲以外的国家，表示交互效应参数对该国家的预测没有影响
+
+2.拟合上述模型
+
+```{r}
+m7.5 <- map(
+  alist(
+    log_gdP ~ dnorm(mu,sigma),
+    mu <- a + gamma*rugged+bA*cont_africa,
+    gamma <- bR+bAR*cont_africa,
+    a ~ dnorm(8,100),
+    bR ~ dnorm(0,1),
+    bA ~ dnorm(0,1),
+    bAR ~ dnorm(0,1),
+    sigma ~ dunif(0,10)
+  ),
+  data = dd
+)
+```
+
+3.将这个模型与前面两个模型进行比较
+
+```{r}
+compare(m7.3,m7.4,m7.5)
+```
+
+结果分析：从WAIC估计权重可以看到，m7.5达到97%（非常强的交互效应），从m7.4少量的权重中得到，m7.5中斜率的后验均值估计有一些过度拟合。
+
+
+## 交互效应可视化
+
+展示两幅图：
+
+一张反应非洲国家的观测点，将MAP后验均值回归线以及97%的置信区间添加到图形中；
+
+另一张展示非洲以外的国家,将MAP后验均值回归线以及97%的置信区间添加到图形中
+
+```{r}
+m7.5_1 <- map(
+  alist(
+    log_gdP ~ dnorm(mu,sigma),
+    mu <- a + bR*rugged+bAR*rugged*cont_africa+bA*cont_africa,
+    a ~ dnorm(8,100),
+    bR ~ dnorm(0,1),
+    bA ~ dnorm(0,1),
+    bAR ~ dnorm(0,1),
+    sigma ~ dunif(0,10)
+  ),
+  data = dd
+)
+```
+
+```{r}
+#1.计算相应的后验均值和置信区间
+
+rugged.seq <- seq(from = -1,to = 8,by = 0.25)#37个值
+
+mu.Africa <- link(m7.5_1,data = data.frame(cont_africa = 1,rugged = rugged.seq))
+mu.Africa.mean <- apply(mu.Africa,2,mean)
+mu.Africa.PI <- apply(mu.Africa,2,PI,prob=0.97)
+
+mu.NotAfrica <- link(m7.5_1,data = data.frame(cont_africa = 0,rugged = rugged.seq))
+mu.NotAfrica.mean <- apply(mu.NotAfrica,2,mean)
+mu.NotAfrica.PI <- apply(mu.NotAfrica,2,PI,prob=0.97)
+
+```
+
+```{r}
+#2.绘制非洲国家的回归结果
+
+d.A1 <- dd[dd$cont_africa == 1,]
+plot(log(rgdppc_2000)~rugged,data = d.A1,
+     col = rangi2 , ylab = "log GDP year 2000",
+     xlab = "Terrain Ruggedness  Index")
+mtext("African nations ",3)
+lines(rugged.seq,mu.Africa.mean,col =rangi2)
+shade(mu.Africa.PI,rugged.seq,col = col.alpha(rangi2,0.3))
+
+#3.绘制非洲以外国家的回归结果
+
+d.A0 <- dd[dd$cont_africa == 0,]
+plot(log(rgdppc_2000)~rugged,data = d.A0,
+     col = "black" , ylab = "log GDP year 2000",
+     xlab = "Terrain Ruggedness  Index")
+mtext("Non-African nations ",3)
+lines(rugged.seq,mu.NotAfrica.mean)
+shade(mu.NotAfrica.PI,rugged.seq)
+
+```
+
+结果：可以看到对于非洲国家和非洲以外的国家，回归线的斜率明显调转了
+
+## 解释交互效应估计
+
+**注意**：不能仅通过后验均值和标准差表格来理解交互效应的主要原因有以下三点：
+
+（1）在模型中添加交互效应时，同时改变了模型参数的意义，在有交互效应和没有交互效应的模型中，主效应的系数含义不同
+
+（2）由于表格数据中没有展示参数中的协方差，所以表格数据让我们很难完全理解其反应的不确定性
+
+（3）连续变量之间的交互效应很难解释清楚
+
+**参数意义变化**
+
+（1）无交互效应的简单线性回归中：每个参数代表相应预测变量改变一个单位对应的平均结果变量的变化（所有参数对结果变量的影响都是独立的）
+
+（2）交互效应的线性模型：上小节中定义的模型，$R_i变化一个单位导致\mu_i的变化是\gamma_i，\gamma_i受到\beta_R、\beta_{AR}、A_i三个元素的影响，必须同时知道这三个元素才能得到R_i对结果的影响$（即考虑了两个参数和一个预测变量）
+
+添加交互效应，拟合的结果从表格中读取不出来任何一个预测变量的影响
+
+```{r}
+precis(m7.5)
+```
+
+$\gamma$未展现在表格中，但通过MAP拟合的结果可以计算出：
+
+（1）对于非洲国家，崎岖度的MAP斜率估计是：
+
+$$\gamma = \beta_R+\beta_{AR}(1) = -0.18+0.35=0.17$$
+（2）非洲以外的国家：
+
+$$\gamma = \beta_R+\beta_{AR}(0)=-0.18$$
+
+**包含的不确定性**
+
+想要知道$\gamma$的不确定性，需要用到整个后验分布，通常通过从后验样本中抽样来得到$\gamma$的后验分布
+
+```{r}
+post <- extract.samples(m7.5)#10000×5
+gamma.Africa <- post$bR+post$bAR*1#非洲国家对应的gamma的后验样本分布
+head(gamma.Africa)
+gamma.notAfrica <- post$bR+post$bAR*0#非洲之外的国家对应的gamma的后验样本分布
+head(gamma.notAfrica)
+```
+```{r}
+#取后验样本分布的均值
+mean(gamma.Africa)
+mean(gamma.notAfrica)
+```
+
+上述结果和MAP几乎相等
+
+```{r}
+#将所有的后验分布样本绘制在同一张图上
+dens(gamma.Africa,xlim = c(-0.5,0.6),ylim = c(0,5.5),
+     xlab = "gamma",col = rangi2)
+dens(gamma.notAfrica,add = TRUE)
+```
+
+通过上图即可以回答一些问题，比如：想要知道非洲国家的斜率小于其他国家斜率的概率：
+
+```{r}
+#（1）计算斜率的差值
+
+diff <- gamma.Africa -gamma.notAfrica
+
+#（2）差值小于0的占比
+
+sum(diff < 0)/length(diff)
+```
+
+# 线性交互对称性
+
+**例3**
+
+布里丹之驴的故事：一只站在两堆草料中间的驴，总会走向草料多的一边，直到有一天两堆草的草料相等的时候，驴会因为无法做出选择而饿死。
+
+交互效应好像布里丹之驴，以地势崎岖和GDP为例：
+
+（1）地势崎岖程度对GDP的影响多大程度取决于该国家是否在非洲？
+
+（2）非洲国家对GDP的影响多大程度上取决于地势崎岖程度？
+
+本小节：
+
+（1）通过分析的方法审视这个事实
+
+（2）再次绘制崎岖程度对GDP的图
+
+## 布里丹的交互效应
+
+1.数学模型
+
+$$似然函数：Y_i \sim Normal(\mu_i,\sigma)$$
+$$\mu的线性模型：\mu_i = \alpha+\gamma_iR   _i+\beta_AA_i$$
+$$斜率的线性模型：\gamma_i = \beta_R+\beta_{AR}A_i$$
+将$\gamma_i$代入到$\mu_i$中，并将$A_i$的系数合并：
+
+$$\mu_i = \alpha + \beta_RR_i +(\beta_A+\beta_{AR}R_i)A_i$$
+上述过程目的是证明两个交互效应是对称的，很难做出选择，但当我们对模型进行因果解释的时候，特定的思维会倾向于其中一种，因为其中一个变量比另一个变量更可控。去控制国家大陆的难度要远远超过控制地势的崎岖程度。
+
+## 国家所属大陆的影响取决于地势
+
+绘制逆向的解释可能会帮助我们理解：下面绘制属于非洲大陆对GDP的影响取决于地势崎岖情况（横轴是cont_africa，两种线条对应两种不同的崎岖度）
+
+```{r}
+#1.得到最大和最小的崎岖度取值
+q.rugged <- range(dd$rugged)
+q.rugged
+
+#2.计算回归线和置信区间
+mu.ruggedlo <- link(m7.5_1,
+                    data = data.frame(rugged = q.rugged[1],cont_africa = 0:1))
+mu.ruggedlo.mean <- apply(mu.ruggedlo,2,mean)
+mu.ruggedlo.PI <- apply(mu.ruggedlo,2,PI)
+
+mu.ruggedhi <- link(m7.5_1,
+                    data = data.frame(rugged = q.rugged[2],cont_africa = 0:1))
+mu.ruggedhi.mean <- apply(mu.ruggedhi,2,mean)
+mu.ruggedhi.PI <- apply(mu.ruggedhi,2,PI)
+
+#3.绘制结果，并将测试点通过中位数分开
+med.r <- median(dd$rugged)#崎岖度的中位数
+ox <- ifelse(dd$rugged>med.r,0.05,-0.05)#如果崎岖度值大于中位数为0.05,否则变成-0.05
+plot(dd$cont_africa +ox ,log(dd$rgdppc_2000),
+     col = ifelse(dd$rugged > med.r,rangi2,"black"),
+     xlim = c(-0.25,1.25),xaxt = "n",ylab = "log GDP year 2000",
+     xlab = "Continent")
+axis(1,at = c(0,1),labels = c("other","Africa"))
+lines(0:1,mu.ruggedlo.mean,lty = 2)
+shade(mu.ruggedlo.PI,0:1)
+lines(0:1,mu.ruggedhi.mean,col = rangi2)
+shade(mu.ruggedhi.PI,0:1,col = col.alpha(rangi2,0.25))
+```
+
+结果：图中黑色的点表示崎岖度在中位数以下的国家，蓝色的点代表崎岖度在中位数以上的国家；横轴代表大陆，非洲以外的大陆在左边，非洲大陆在右边；黑色虚线和阴影置信区间表示：改变一个地势崎岖度最小的国家所处的大陆带来对数GDP的预期减少；对于崎岖度低的国家，预期的对数GDP大约减少了2个点，蓝色回归线和阴影置信区间表示改变地势崎岖度最大的国家所处的大陆带来的变化，几乎没有什么变化。
+
+在当前模型和数据的基础上，以下两点同时正确：
+
+（1）崎岖度的影响和所在的大陆有关
+
+（2）所在大陆的影响和崎岖度有关
+
+# 连续交互效应
+
+**本小节内容**:
+
+（1）以一个简单的线性回归的例子，展示两个连续变量双向交互效应的可视化方法（三联图：由3幅图组成的图组，用来展示回归结果的全貌）
+
+（2）拟合模型之前先中心化（中心化优点：有助于通过参数估计结果拟合模型；没有中心化会给模型拟合带来困难）
+
+## 数据
+
+**例题4**
+
+案例数据是在不同土壤和光照条件下温室栽培的郁金香花朵大小。
+
+```{r}
+#1.载入数据
+library(rethinking)
+data("tulips")#27×4
+d <- tulips
+str(d)
+```
+
+解释数据：
+
+（1）blooms:模型的结果变量列
+
+（2）water：预测变量，1，2，3表示三种湿度
+
+（3）shade:预测变量，1，2，3表示三种光照情况
+
+（4）bed:温室的编号，花来自于a,b,c三个温室
+
+## 未中心化的模型
+
+1.下面研究两个模型：
+
+（1）含有water和shade变量（主效应），但没有交互效应
+
+$$似然函数：B_i \sim Normal(\mu_i,\sigma)$$
+$$\mu_i = \alpha+\beta_WW_i+\beta_sS_i$$
+
+（2）含有两个主效应，且还存在交互效应
+$$似然函数：B_i \sim Normal(\mu_i,\sigma)$$
+$$\mu_i = \alpha+\beta_WW_i+\beta_SS_i+\beta_{WS}W_iS_i$$
+
+2.拟合模型
+```{r}
+#m7.6 <- map(
+ #  alist(
+ #   blooms ~ dnorm(mu,sigma),
+  #  mu <- a +bW*water+bS*shade,
+   # a ~ dnorm(0,100),
+    #bW ~ dnorm(0,100),
+    #bS ~ dnorm(0,100),
+  #sigma ~ dunif(0,100)
+#),
+#data = d)
+
+#m7.7 <- map(
+ # alist(
+  #  blooms ~ dnorm(mu,sigma),
+   # mu <- a+bW*water+bS*shade+bWS*water*shade,
+    #a ~ dnorm(0,100),
+    #bW ~ dnorm(0,100),
+    #bS ~ dnorm(0,100),
+    #bWS ~ dnorm(0,100),
+    #sigma ~ dunif(0,100)
+  #),
+  #data = d
+#)
+#报错的原因是初始值没有选好，搜索时间超过了限度
+```
+
+解决上述问题的方法：
+
+（1）采取另一种优化方法
+
+（2）让optim延长搜索时间（通过contral参数告诉map函数的最大迭代次数）
+
+（3）对数据进行标准化，减少搜索困难程度
+
+接下来采取前两种方法解决此问题，第三种方法在下一小节中会用到：
+
+```{r}
+m7.6 <- map(
+  alist(
+    blooms ~ dnorm(mu,sigma),
+    mu <- a +bW*water+bS*shade,
+    a ~ dnorm(0,100),
+    bW ~ dnorm(0,100),
+    bS ~ dnorm(0,100),
+  sigma ~ dunif(0,100)
+),
+data = d,
+method = "Nelder-Mead",
+control = list(maxit = 1e4))
+
+m7.7 <- map(
+  alist(
+    blooms ~ dnorm(mu,sigma),
+    mu <- a+bW*water+bS*shade+bWS*water*shade,
+    a ~ dnorm(0,100),
+    bW ~ dnorm(0,100),
+    bS ~ dnorm(0,100),
+    bWS ~ dnorm(0,100),
+    sigma ~ dunif(0,100)
+  ),
+  data = d,
+  method = "Nelder-Mead",
+control = list(maxit = 1e4)
+)
+```
+
+3.结果展示
+```{r}
+coeftab(m7.6,m7.7)
+```
+
+分析结果：
+
+（1）截距项（53--84）：变化较大，且很难解释，因为没有那个预测变量取值为0
+
+（2）斜率：
+
+m7.6：water对应的MAP估计是正数，shade是负数，且置信区间不包括0。表明水分促进花朵，无光照阻碍花朵
+
+m7.7:两个主效应的MAP估计结果是正数，交互效应后验分布均值是负数
+
+4.比较模型
+```{r}
+compare(m7.6,m7.7)
+```
+
+结果分析：
+
+所有权重几乎都赋予了m7.7，通过m7.7的后验分布，可以得到随着无光照处理的增强，水分对花朵的影响减少
+
+## 中心化且再次拟合模型
+
+1.中心化shade和water
+```{r}
+d$shade.c <- d$shade - mean(d$shade)
+d$water.c <- d$water - mean(d$water)
+```
+
+2.将水分和光照的程度重新编码，由1-3变成-1-1
+
+3.中心化解决的两件事:
+
+（1）最大迭代次数的问题
+
+（2）估计的结果更容易解释
+
+4.拟合模型
+```{r}
+m7.8 <- map(
+  alist(
+    blooms ~ dnorm(mu,sigma),
+    mu <- a +bW*water.c+bS*shade.c,
+    a ~ dnorm(130,100),
+    bW ~ dnorm(0,100),
+    bS ~ dnorm(0,100),
+  sigma ~ dunif(0,100)
+),
+data = d,
+start = list(a = mean(d$blooms),bW=0,bS=0,sigma = sd(d$blooms)))
+
+m7.9 <- map(
+  alist(
+    blooms ~ dnorm(mu,sigma),
+    mu <- a+bW*water.c+bS*shade.c+bWS*water.c*shade.c,
+    a ~ dnorm(130,100),
+    bW ~ dnorm(0,100),
+    bS ~ dnorm(0,100),
+    bWS ~ dnorm(0,100),
+    sigma ~ dunif(0,100)
+  ),
+  data = d,
+  start = list(a = mean(d$blooms),bW=0,bS=0,bWS=0,sigma = sd(d$blooms))
+)
+
+coeftab(m7.8,m7.9)
+```
+
+5.解释结果：
+
+主效应相同，与之前不同的是shade对应的参数估计方向发生改变，貌似更多的水分能够增强花朵大小，无光照处理增强减少花朵大小
+
+6.中心化能够产生后验均值交互效应估计和没有中心化的模型保持一致
+
+例如：考虑一个水分和无光照处理都为均值的花朵：
+
+（1）没有中心化的模型的结果（W = 2；S = 2）
+
+```{r}
+k <- coef(m7.7)
+k[1] + k[2]*2 + k[3]*2 + k[4]*2*2
+```
+
+（2）中心化后模型的结果（W = 0；S = 0）
+```{r}
+k <- coef(m7.9)
+k[1] + k[2]*0 + k[3]*0 +k[4]*0*0
+```
+
+结果： 可以看到两个结果非常接近，但是中心化后的模型更好解释
+
+```{r}
+precis(m7.9)
+```
+（1）a的估计：表示当W和S取值为均值时花的期望
+
+（2）bW的估计：当W增加一个单位，S取平均值时，花变化的期望
+
+（3）bS的估计：当S增加一个单位，W取平均值时，花变化的期望
+
+（4）bWS的估计：反应交互效应，当S增加一个单位时，W的影响发生的预期变化；当W增加一个单位时，S的影响发生的预期变化。bWS为负数，说明水分和无光照对花朵的影响相反
+
+## 绘制预测图
+
+绘制三联图来理解交互效应，每幅图对应某个水分取值：
+
+```{r}
+#创建一个含有3个图的窗口
+par(mfrow = c(1,3))#1行，3列
+
+#对water.c的取值进行循环并且绘制相应的预测图
+shade.seq <- -1:1
+for ( w in -1:1){
+  dt <- d[d$water.c == w,]
+  plot(blooms ~ shade.c,data =dt,col = rangi2,
+       main = paste("water.c = ",w),xaxp = c(-1,1,2),ylim = c(0,362),
+       xlab = "shade(centered)")
+  mu <- link(m7.9,data = data.frame(water.c =w,shade.c = shade.seq))
+  mu.mean <- apply(mu,2,mean)
+  mu.PI <- apply(mu,2,PI,prob = 0.97)
+  lines (shade.seq,mu.mean)
+  lines(shade.seq,mu.PI[1,],lty = 2)
+  lines(shade.seq,mu.PI[2,],lty = 2)
+}
+```
+
+[![bblxC6.jpg](https://s1.ax1x.com/2022/03/13/bblxC6.jpg)](https://imgtu.com/i/bblxC6)
+
+分析结果：
+
+第一行是没有交互效应（m7.8）的情况下，不同水分取值下无光照处理和花朵大小的关系；
+
+第二行是有交互效应（m7.9）的情况下，不同水分取值下无光照处理和花朵大小的关系
+
+第一幅图中，各个图的斜率都是相同的，不同水分取值对应的回归线的高度确实差别很大，但总体是以相同的斜率向下
+
+第二幅图中，每个水分取值对应不同的预测斜率，当水分处于最低点时，无光照处理对花几乎没有什么影响；当水分取值居中时，提高无光照处理的强度能明显抑制花朵的大小；当无光照处理从最弱到最强时，花朵几乎减少了一半；当水分取值最高的情况下，斜率显著为负，无光照的处理强度是花朵大小更强的预测变量。
+
+# 交互效应的公式表达
+
+1.x和z之间交互效应的模型
+
+$$ y_i \sim \text{Normal}(\mu_i, \sigma) $$
+$$\mu_i = \alpha + \beta_x x_i + \beta_z z_i + \beta_{xz} x_i z_i $$
+
+```{r}
+#两种拟合方法
+#m7.x <- lm(y ~ x + z + x*z,data = d)
+#m7.x <- lm(y ~ x*z,data = d)
+```
+
+2.可以通过减去主效应来消除（已知z对y的影响很有用时）
+
+```{r}
+#m7.x <- lm(y ~ x + x*z - z,data =d)
+```
+
+3.高阶交互效应（仅需要将更多的变量相乘）
+
+$$ y_i \sim \text{Normal}(\mu_i, \sigma) $$
+$$\mu_i = \alpha + \beta_x x_i + \beta_z z_i + \beta_w w_i + \beta_{xz} x_i z_i +\beta_{xw} x_i w_i+\beta_{zw} w_i z_i+\beta_{xwz} x_i z_i w_i$$
+
+```{r}
+#m7.x <- lm(y ~ x*z*w ,data =d)
+```
+
+4.通过以下技巧查看R是如何解释公式
+
+```{r}
+#x <- z <- w <- 1
+#colnames (model.matrix( ~ x*z*w))
+```
+
+# 总结
+
+1.创建交互效应
+
+2.解释交互效应
+
+3.交互效应的可视化
+
+
